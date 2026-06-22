@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const create_weight_dto_1 = require("./dto/create-weight.dto");
 const update_weight_dto_1 = require("./dto/update-weight.dto");
+const weight_list_response_dto_1 = require("./dto/weight-list-response.dto");
 const weight_entity_1 = require("./entities/weight.entity");
 const weight_service_1 = require("./weight.service");
 let WeightController = class WeightController {
@@ -53,7 +54,7 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Lista os registros de peso' }),
-    (0, swagger_1.ApiOkResponse)({ type: weight_entity_1.Weight, isArray: true }),
+    (0, swagger_1.ApiOkResponse)({ type: weight_list_response_dto_1.WeightListResponseDto }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)

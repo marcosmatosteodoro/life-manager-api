@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateWeightDto } from './dto/create-weight.dto';
 import { UpdateWeightDto } from './dto/update-weight.dto';
+import { WeightListResponseDto } from './dto/weight-list-response.dto';
 import { Weight } from './entities/weight.entity';
 
 @Injectable()
@@ -17,10 +18,12 @@ export class WeightService {
     return this.weightRepository.save(weight);
   }
 
-  findAll(): Promise<Weight[]> {
-    return this.weightRepository.find({
+  async findAll(): Promise<WeightListResponseDto> {
+    // findAndCount retorna [registros, total] numa única consulta.
+    const [rows, count] = await this.weightRepository.findAndCount({
       order: { date: 'DESC', time: 'DESC' },
     });
+    return { count, rows };
   }
 
   async findOne(id: number): Promise<Weight> {

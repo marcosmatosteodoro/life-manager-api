@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateWeightDto } from './dto/create-weight.dto';
 import { UpdateWeightDto } from './dto/update-weight.dto';
+import { WeightListResponseDto } from './dto/weight-list-response.dto';
 import { Weight } from './entities/weight.entity';
 import { WeightService } from './weight.service';
 
@@ -36,7 +37,7 @@ export class WeightController {
 
   @Get()
   @ApiOperation({ summary: 'Lista os registros de peso' })
-  @ApiOkResponse({ type: Weight, isArray: true })
+  @ApiOkResponse({ type: WeightListResponseDto })
   findAll() {
     return this.weightService.findAll();
   }

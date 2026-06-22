@@ -26,10 +26,11 @@ let WeightService = class WeightService {
         const weight = this.weightRepository.create(createWeightDto);
         return this.weightRepository.save(weight);
     }
-    findAll() {
-        return this.weightRepository.find({
+    async findAll() {
+        const [rows, count] = await this.weightRepository.findAndCount({
             order: { date: 'DESC', time: 'DESC' },
         });
+        return { count, rows };
     }
     async findOne(id) {
         const weight = await this.weightRepository.findOne({ where: { id } });
