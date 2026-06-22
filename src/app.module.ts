@@ -8,6 +8,7 @@ import { ArticleModule } from './article/article.module';
 import { DailyCheckModule } from './daily-check/daily-check.module';
 import { CountryModule } from './country/country.module';
 import { CompanyModule } from './company/company.module';
+import { ApplyModule } from './apply/apply.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CompanyModule } from './company/company.module';
     DailyCheckModule,
     CountryModule,
     CompanyModule,
+    ApplyModule,
   ],
   controllers: [AppController],
   providers: [AppService],
