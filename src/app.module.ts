@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { WeightModule } from './weight/weight.module';
 import { ArticleModule } from './article/article.module';
 import { DailyCheckModule } from './daily-check/daily-check.module';
+import { CountryModule } from './country/country.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { DailyCheckModule } from './daily-check/daily-check.module';
     WeightModule,
     ArticleModule,
     DailyCheckModule,
+    CountryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
