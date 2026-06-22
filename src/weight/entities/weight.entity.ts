@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { decimalTransformer } from '../../common/transformers/decimal.transformer';
 
 @Entity('weight')
 export class Weight {
@@ -22,10 +23,7 @@ export class Weight {
     precision: 6,
     scale: 2,
     nullable: false,
-    transformer: {
-      to: (value: number) => value,
-      from: (value: string | null) => (value === null ? null : Number(value)),
-    },
+    transformer: decimalTransformer,
   })
   @ApiProperty({ example: 81.55 })
   value: number;

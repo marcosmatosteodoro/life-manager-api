@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Weight = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const typeorm_1 = require("typeorm");
+const decimal_transformer_1 = require("../../common/transformers/decimal.transformer");
 let Weight = class Weight {
     id;
     value;
@@ -33,10 +34,7 @@ __decorate([
         precision: 6,
         scale: 2,
         nullable: false,
-        transformer: {
-            to: (value) => value,
-            from: (value) => (value === null ? null : Number(value)),
-        },
+        transformer: decimal_transformer_1.decimalTransformer,
     }),
     (0, swagger_1.ApiProperty)({ example: 81.55 }),
     __metadata("design:type", Number)
