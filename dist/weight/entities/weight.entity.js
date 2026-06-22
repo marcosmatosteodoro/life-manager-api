@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Weight = void 0;
+const swagger_1 = require("@nestjs/swagger");
 const typeorm_1 = require("typeorm");
 let Weight = class Weight {
     id;
@@ -22,30 +23,46 @@ let Weight = class Weight {
 };
 exports.Weight = Weight;
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 1 }),
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
 ], Weight.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 6, scale: 2, nullable: false }),
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 6,
+        scale: 2,
+        nullable: false,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value === null ? null : Number(value)),
+        },
+    }),
+    (0, swagger_1.ApiProperty)({ example: 81.55 }),
     __metadata("design:type", Number)
 ], Weight.prototype, "value", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: '2026-06-22' }),
     (0, typeorm_1.Column)({ type: 'date', nullable: false }),
     __metadata("design:type", String)
 ], Weight.prototype, "date", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: '08:30:00', nullable: true }),
     (0, typeorm_1.Column)({ type: 'time', nullable: true }),
     __metadata("design:type", Object)
 ], Weight.prototype, "time", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)(),
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
 ], Weight.prototype, "createdAt", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)(),
     (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
     __metadata("design:type", Date)
 ], Weight.prototype, "updatedAt", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 1, nullable: true }),
     (0, typeorm_1.Column)({ name: 'creator_id', type: 'int', nullable: true }),
     __metadata("design:type", Object)
 ], Weight.prototype, "creatorId", void 0);
