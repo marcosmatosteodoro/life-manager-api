@@ -14,6 +14,11 @@ export class Article {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // title string, not null
+  @ApiProperty({ example: 'The Pragmatic Programmer' })
+  @Column({ type: 'varchar', length: 255, nullable: false })
+  title: string;
+
   // readingTime int, not null
   @ApiProperty({ example: 5, description: 'Tempo estimado de leitura (minutos)' })
   @Column({ name: 'reading_time', type: 'int', nullable: false })

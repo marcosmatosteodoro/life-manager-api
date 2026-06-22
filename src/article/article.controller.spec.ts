@@ -7,6 +7,7 @@ import { Article } from './entities/article.entity';
 
 const buildArticle = (overrides: Partial<Article> = {}): Article => ({
   id: 1,
+  title: 'The Pragmatic Programmer',
   readingTime: 5,
   timeRead: 7,
   timeWrite: 12,
@@ -48,7 +49,11 @@ describe('ArticleController', () => {
   });
 
   it('create delega para o service e retorna o resultado', async () => {
-    const dto: CreateArticleDto = { readingTime: 5, timeRead: 7 };
+    const dto: CreateArticleDto = {
+      title: 'The Pragmatic Programmer',
+      readingTime: 5,
+      timeRead: 7,
+    };
     const created = buildArticle();
     service.create.mockResolvedValue(created);
 

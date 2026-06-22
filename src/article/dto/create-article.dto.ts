@@ -1,7 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 
 export class CreateArticleDto {
+  // title string, obrigatório e não-vazio.
+  @ApiProperty({ example: 'The Pragmatic Programmer' })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
   // readingTime int, obrigatório e positivo.
   @ApiProperty({ example: 5, description: 'Tempo estimado de leitura (minutos)' })
   @IsInt()

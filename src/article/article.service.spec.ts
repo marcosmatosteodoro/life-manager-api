@@ -23,6 +23,7 @@ const createMockRepository = (): MockRepository<Article> => ({
 
 const buildArticle = (overrides: Partial<Article> = {}): Article => ({
   id: 1,
+  title: 'The Pragmatic Programmer',
   readingTime: 5,
   timeRead: 7,
   timeWrite: 12,
@@ -64,7 +65,11 @@ describe('ArticleService', () => {
 
   describe('create', () => {
     it('cria a entidade e persiste, retornando o registro salvo', async () => {
-      const dto: CreateArticleDto = { readingTime: 5, timeRead: 7 };
+      const dto: CreateArticleDto = {
+        title: 'The Pragmatic Programmer',
+        readingTime: 5,
+        timeRead: 7,
+      };
       const entity = buildArticle({ timeWrite: null, summary: null, score: null });
       repository.create!.mockReturnValue(entity);
       repository.save!.mockResolvedValue(entity);
