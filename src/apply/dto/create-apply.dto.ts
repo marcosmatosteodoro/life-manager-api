@@ -27,6 +27,12 @@ export class CreateApplyDto {
   @IsEnum(ApplyStatus)
   status: ApplyStatus;
 
+  // companyId — FK obrigatória.
+  @ApiProperty({ example: 1, description: 'Id da empresa (FK)' })
+  @IsInt()
+  @IsPositive()
+  companyId: number;
+
   // link varchar, opcional.
   @ApiPropertyOptional({ example: 'https://acme.com/vagas/123' })
   @IsOptional()

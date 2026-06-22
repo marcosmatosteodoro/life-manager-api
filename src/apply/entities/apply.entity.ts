@@ -3,9 +3,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Company } from '../../company/entities/company.entity';
 import { ApplyStatus } from '../enums/apply-status.enum';
 
 @Entity('apply')
@@ -39,6 +42,17 @@ export class Apply {
   @ApiProperty({ example: 'Processo via LinkedIn...', nullable: true })
   @Column({ type: 'text', nullable: true })
   description: string | null;
+
+  // companyId — FK para company (not null)
+  @ApiProperty({ example: 1, description: 'Id da empresa (FK)' })
+  @Column({ name: 'company_id', type: 'int', nullable: false })
+  companyId: number;
+
+  // Relação com company; ON DELETE RESTRICT evita apagar empresa com candidaturas.
+  @ApiProperty({ type: () => Company, required: false })
+  @ManyToOne(() => Company, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'company_id' })
+  company?: Company;
 
   // createdAt automático
   @ApiProperty()

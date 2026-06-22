@@ -13,6 +13,7 @@ const buildApply = (overrides: Partial<Apply> = {}): Apply => ({
   date: '2026-06-22',
   status: ApplyStatus.APPLIED,
   description: null,
+  companyId: 1,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,
@@ -52,6 +53,7 @@ describe('ApplyController', () => {
       name: 'Vaga Backend Node - Acme',
       date: '2026-06-22',
       status: ApplyStatus.APPLIED,
+      companyId: 1,
     };
     const created = buildApply();
     service.create.mockResolvedValue(created);

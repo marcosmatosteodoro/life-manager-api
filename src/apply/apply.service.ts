@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Company } from '../company/entities/company.entity';
 import { ApplyListResponseDto } from './dto/apply-list-response.dto';
 import { CreateApplyDto } from './dto/create-apply.dto';
 import { UpdateApplyDto } from './dto/update-apply.dto';
@@ -11,23 +12,30 @@ export class ApplyService {
   constructor(
     @InjectRepository(Apply)
     private readonly applyRepository: Repository<Apply>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) {}
 
-  create(createApplyDto: CreateApplyDto): Promise<Apply> {
+  async create(createApplyDto: CreateApplyDto): Promise<Apply> {
+    await this.ensureCompanyExists(createApplyDto.companyId);
     const apply = this.applyRepository.create(createApplyDto);
     return this.applyRepository.save(apply);
   }
 
   async findAll(): Promise<ApplyListResponseDto> {
-    // findAndCount retorna [registros, total] numa única consulta.
+    // Carrega a relação company; findAndCount retorna [registros, total].
     const [rows, count] = await this.applyRepository.findAndCount({
+      relations: { company: true },
       order: { date: 'DESC' },
     });
     return { count, rows };
   }
 
   async findOne(id: number): Promise<Apply> {
-    const apply = await this.applyRepository.findOne({ where: { id } });
+    const apply = await this.applyRepository.findOne({
+      where: { id },
+      relations: { company: true },
+    });
     if (!apply) {
       throw new NotFoundException(`Apply #${id} não encontrado`);
     }
@@ -35,6 +43,10 @@ export class ApplyService {
   }
 
   async update(id: number, updateApplyDto: UpdateApplyDto): Promise<Apply> {
+    // Valida a FK apenas quando companyId é enviado.
+    if (updateApplyDto.companyId !== undefined) {
+      await this.ensureCompanyExists(updateApplyDto.companyId);
+    }
     // preload garante 404 quando o id não existe, sem update silencioso.
     const apply = await this.applyRepository.preload({
       id,
@@ -50,6 +62,16 @@ export class ApplyService {
     const result = await this.applyRepository.delete(id);
     if (!result.affected) {
       throw new NotFoundException(`Apply #${id} não encontrado`);
+    }
+  }
+
+  /** Garante que a empresa referenciada existe (erro limpo em vez de violação de FK). */
+  private async ensureCompanyExists(companyId: number): Promise<void> {
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+    if (!company) {
+      throw new NotFoundException(`Company #${companyId} não encontrado`);
     }
   }
 }

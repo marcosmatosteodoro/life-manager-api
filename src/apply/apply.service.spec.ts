@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Company } from '../company/entities/company.entity';
 import { ApplyService } from './apply.service';
 import { CreateApplyDto } from './dto/create-apply.dto';
 import { Apply } from './entities/apply.entity';
@@ -12,7 +13,7 @@ type MockRepository<T extends object = object> = Partial<
   Record<keyof Repository<T>, jest.Mock>
 >;
 
-const createMockRepository = (): MockRepository<Apply> => ({
+const createMockRepository = <T extends object>(): MockRepository<T> => ({
   create: jest.fn(),
   save: jest.fn(),
   find: jest.fn(),
@@ -29,6 +30,18 @@ const buildApply = (overrides: Partial<Apply> = {}): Apply => ({
   date: '2026-06-22',
   status: ApplyStatus.APPLIED,
   description: null,
+  companyId: 1,
+  createdAt: new Date('2026-06-22T08:30:00.000Z'),
+  updatedAt: new Date('2026-06-22T08:30:00.000Z'),
+  creatorId: null,
+  ...overrides,
+});
+
+const buildCompany = (overrides: Partial<Company> = {}): Company => ({
+  id: 1,
+  name: 'Acme Corp',
+  website: 'https://acme.com',
+  countryId: 1,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,
@@ -37,7 +50,8 @@ const buildApply = (overrides: Partial<Apply> = {}): Apply => ({
 
 describe('ApplyService', () => {
   let service: ApplyService;
-  let repository: MockRepository<Apply>;
+  let applyRepository: MockRepository<Apply>;
+  let companyRepository: MockRepository<Company>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -45,13 +59,18 @@ describe('ApplyService', () => {
         ApplyService,
         {
           provide: getRepositoryToken(Apply),
-          useValue: createMockRepository(),
+          useValue: createMockRepository<Apply>(),
+        },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: createMockRepository<Company>(),
         },
       ],
     }).compile();
 
     service = module.get<ApplyService>(ApplyService);
-    repository = module.get<MockRepository<Apply>>(getRepositoryToken(Apply));
+    applyRepository = module.get(getRepositoryToken(Apply));
+    companyRepository = module.get(getRepositoryToken(Company));
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -61,39 +80,59 @@ describe('ApplyService', () => {
   });
 
   describe('create', () => {
-    it('cria a entidade e persiste, retornando o registro salvo', async () => {
+    it('valida a empresa, cria e persiste, retornando o registro salvo', async () => {
       const dto: CreateApplyDto = {
         name: 'Vaga Backend Node - Acme',
         date: '2026-06-22',
         status: ApplyStatus.APPLIED,
+        companyId: 1,
       };
       const entity = buildApply({ link: null });
-      repository.create!.mockReturnValue(entity);
-      repository.save!.mockResolvedValue(entity);
+      companyRepository.findOne!.mockResolvedValue(buildCompany());
+      applyRepository.create!.mockReturnValue(entity);
+      applyRepository.save!.mockResolvedValue(entity);
 
       const result = await service.create(dto);
 
-      expect(repository.create).toHaveBeenCalledWith(dto);
-      expect(repository.save).toHaveBeenCalledWith(entity);
+      expect(companyRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+      });
+      expect(applyRepository.create).toHaveBeenCalledWith(dto);
+      expect(applyRepository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(entity);
+    });
+
+    it('lança NotFoundException quando a empresa (companyId) não existe', async () => {
+      companyRepository.findOne!.mockResolvedValue(null);
+
+      await expect(
+        service.create({
+          name: 'X',
+          date: '2026-06-22',
+          status: ApplyStatus.APPLIED,
+          companyId: 999,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(applyRepository.save).not.toHaveBeenCalled();
     });
   });
 
   describe('findAll', () => {
-    it('retorna no formato { count, rows } ordenado por data desc', async () => {
+    it('retorna { count, rows } com a relação company e ordenado por data desc', async () => {
       const rows = [buildApply({ id: 1 }), buildApply({ id: 2 })];
-      repository.findAndCount!.mockResolvedValue([rows, 2]);
+      applyRepository.findAndCount!.mockResolvedValue([rows, 2]);
 
       const result = await service.findAll();
 
-      expect(repository.findAndCount).toHaveBeenCalledWith({
+      expect(applyRepository.findAndCount).toHaveBeenCalledWith({
+        relations: { company: true },
         order: { date: 'DESC' },
       });
       expect(result).toEqual({ count: 2, rows });
     });
 
     it('retorna count 0 e rows vazio quando não há registros', async () => {
-      repository.findAndCount!.mockResolvedValue([[], 0]);
+      applyRepository.findAndCount!.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
@@ -102,61 +141,87 @@ describe('ApplyService', () => {
   });
 
   describe('findOne', () => {
-    it('retorna o registro quando encontrado', async () => {
+    it('retorna o registro (com company) quando encontrado', async () => {
       const entity = buildApply();
-      repository.findOne!.mockResolvedValue(entity);
+      applyRepository.findOne!.mockResolvedValue(entity);
 
       const result = await service.findOne(1);
 
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(applyRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+        relations: { company: true },
+      });
       expect(result).toEqual(entity);
     });
 
     it('lança NotFoundException quando não encontrado', async () => {
-      repository.findOne!.mockResolvedValue(null);
+      applyRepository.findOne!.mockResolvedValue(null);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
-    it('faz preload e salva o registro atualizado (mudança de status)', async () => {
+    it('faz preload e salva sem validar empresa quando companyId não é enviado', async () => {
       const updated = buildApply({ status: ApplyStatus.INTERVIEW_SCHEDULED });
-      repository.preload!.mockResolvedValue(updated);
-      repository.save!.mockResolvedValue(updated);
+      applyRepository.preload!.mockResolvedValue(updated);
+      applyRepository.save!.mockResolvedValue(updated);
 
       const result = await service.update(1, {
         status: ApplyStatus.INTERVIEW_SCHEDULED,
       });
 
-      expect(repository.preload).toHaveBeenCalledWith({
+      expect(companyRepository.findOne).not.toHaveBeenCalled();
+      expect(applyRepository.preload).toHaveBeenCalledWith({
         id: 1,
         status: ApplyStatus.INTERVIEW_SCHEDULED,
       });
-      expect(repository.save).toHaveBeenCalledWith(updated);
       expect(result).toEqual(updated);
     });
 
-    it('lança NotFoundException quando o id não existe (preload null)', async () => {
-      repository.preload!.mockResolvedValue(undefined);
+    it('valida a empresa quando companyId é enviado', async () => {
+      const updated = buildApply({ companyId: 2 });
+      companyRepository.findOne!.mockResolvedValue(buildCompany({ id: 2 }));
+      applyRepository.preload!.mockResolvedValue(updated);
+      applyRepository.save!.mockResolvedValue(updated);
+
+      const result = await service.update(1, { companyId: 2 });
+
+      expect(companyRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 2 },
+      });
+      expect(result).toEqual(updated);
+    });
+
+    it('lança NotFoundException quando a empresa (companyId) enviada não existe', async () => {
+      companyRepository.findOne!.mockResolvedValue(null);
+
+      await expect(service.update(1, { companyId: 999 })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(applyRepository.preload).not.toHaveBeenCalled();
+    });
+
+    it('lança NotFoundException quando o id da candidatura não existe (preload null)', async () => {
+      applyRepository.preload!.mockResolvedValue(undefined);
 
       await expect(
         service.update(999, { status: ApplyStatus.APPROVED }),
       ).rejects.toThrow(NotFoundException);
-      expect(repository.save).not.toHaveBeenCalled();
+      expect(applyRepository.save).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
     it('remove quando o registro existe', async () => {
-      repository.delete!.mockResolvedValue({ affected: 1, raw: [] });
+      applyRepository.delete!.mockResolvedValue({ affected: 1, raw: [] });
 
       await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      expect(applyRepository.delete).toHaveBeenCalledWith(1);
     });
 
     it('lança NotFoundException quando nada foi afetado', async () => {
-      repository.delete!.mockResolvedValue({ affected: 0, raw: [] });
+      applyRepository.delete!.mockResolvedValue({ affected: 0, raw: [] });
 
       await expect(service.remove(999)).rejects.toThrow(NotFoundException);
     });
