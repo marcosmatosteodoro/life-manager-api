@@ -17,6 +17,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { CreateFlashCardGroupDto } from './dto/create-flash-card-group.dto';
 import { FlashCardGroupListResponseDto } from './dto/flash-card-group-list-response.dto';
 import { UpdateFlashCardGroupDto } from './dto/update-flash-card-group.dto';
@@ -40,6 +41,16 @@ export class FlashCardGroupController {
   @ApiOkResponse({ type: FlashCardGroupListResponseDto })
   findAll() {
     return this.service.findAll();
+  }
+
+  @Get(':id/review')
+  @ApiOperation({
+    summary: 'Flashcards do grupo ordenados para revisão',
+  })
+  @ApiOkResponse({ type: FlashCard, isArray: true })
+  @ApiNotFoundResponse({ description: 'Registro não encontrado' })
+  review(@Param('id', ParseIntPipe) id: number) {
+    return this.service.review(id);
   }
 
   @Get(':id')

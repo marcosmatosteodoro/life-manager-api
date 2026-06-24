@@ -17,7 +17,19 @@ const createMockRepository = (): MockRepository<FlashCardGroup> => ({
   findOne: jest.fn(),
   preload: jest.fn(),
   delete: jest.fn(),
+  countBy: jest.fn(),
 });
+
+// Query builder encadeável para o método review.
+const createQueryBuilderMock = () => {
+  const qb = {
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
+    getMany: jest.fn(),
+  };
+  return qb;
+};
 
 const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard =>
   ({
@@ -50,14 +62,20 @@ const buildGroup = (overrides: Partial<FlashCardGroup> = {}): FlashCardGroup =>
 describe('FlashCardGroupService', () => {
   let service: FlashCardGroupService;
   let repository: MockRepository<FlashCardGroup>;
+  let qb: ReturnType<typeof createQueryBuilderMock>;
 
   beforeEach(async () => {
+    qb = createQueryBuilderMock();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FlashCardGroupService,
         {
           provide: getRepositoryToken(FlashCardGroup),
           useValue: createMockRepository(),
+        },
+        {
+          provide: getRepositoryToken(FlashCard),
+          useValue: { createQueryBuilder: jest.fn(() => qb) },
         },
       ],
     }).compile();
@@ -148,6 +166,37 @@ describe('FlashCardGroupService', () => {
       await expect(service.update(999, { name: 'x' })).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('review', () => {
+    it('retorna os cards ordenados com totalReviews', async () => {
+      repository.countBy!.mockResolvedValue(1);
+      qb.getMany.mockResolvedValue([
+        buildCard({ id: 1, correctAnswers: 1, wrongAnswers: 2 }),
+      ]);
+
+      const result = await service.review(1);
+
+      expect(qb.where).toHaveBeenCalledWith('card.flashCardGroupId = :id', {
+        id: 1,
+      });
+      expect(qb.orderBy).toHaveBeenCalledWith(
+        'CASE WHEN card.score < 0 THEN 0 ELSE 1 END',
+        'ASC',
+      );
+      expect(qb.addOrderBy).toHaveBeenCalledWith(
+        'card.lastReview',
+        'ASC',
+        'NULLS FIRST',
+      );
+      expect(qb.addOrderBy).toHaveBeenCalledWith('card.score', 'ASC');
+      expect(result[0].totalReviews).toBe(3);
+    });
+
+    it('lança NotFoundException quando o grupo não existe', async () => {
+      repository.countBy!.mockResolvedValue(0);
+      await expect(service.review(999)).rejects.toThrow(NotFoundException);
     });
   });
 

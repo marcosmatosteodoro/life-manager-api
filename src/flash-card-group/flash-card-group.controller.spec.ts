@@ -26,6 +26,7 @@ describe('FlashCardGroupController', () => {
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      review: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FlashCardGroupController],
@@ -75,5 +76,11 @@ describe('FlashCardGroupController', () => {
     service.remove.mockResolvedValue(undefined);
     await expect(controller.remove(1)).resolves.toBeUndefined();
     expect(service.remove).toHaveBeenCalledWith(1);
+  });
+
+  it('review repassa o id para o service', async () => {
+    service.review.mockResolvedValue([]);
+    await expect(controller.review(1)).resolves.toEqual([]);
+    expect(service.review).toHaveBeenCalledWith(1);
   });
 });
