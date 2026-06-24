@@ -9,6 +9,7 @@ import { DailyCheckModule } from './daily-check/daily-check.module';
 import { CountryModule } from './country/country.module';
 import { CompanyModule } from './company/company.module';
 import { ApplyModule } from './apply/apply.module';
+import { DiaryModule } from './diary/diary.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ApplyModule } from './apply/apply.module';
     CountryModule,
     CompanyModule,
     ApplyModule,
+    DiaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
