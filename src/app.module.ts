@@ -18,15 +18,21 @@ import { ApplyModule } from './apply/apply.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'mysql',
+        // Postgres por padrão (dev e prod). DB_TYPE permite alternar se preciso.
+        type: config.get<'postgres' | 'mysql'>('DB_TYPE', 'postgres'),
         host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 3306),
+        port: config.get<number>('DB_PORT', 5432),
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
         // synchronize só em desenvolvimento — em produção use migrações.
         synchronize: config.get<string>('NODE_ENV') !== 'production',
+        // Provedores gerenciados (ex.: Vercel/Neon) exigem SSL: DB_SSL=true.
+        ssl:
+          config.get<string>('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
       }),
     }),
     WeightModule,

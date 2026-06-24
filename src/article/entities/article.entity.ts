@@ -38,14 +38,14 @@ export class Article {
   @Column({ name: 'time_write', type: 'int', nullable: true })
   timeWrite: number | null;
 
-  // summary texto longo, null true
+  // summary texto longo, null true (text: portável entre Postgres e MySQL)
   @ApiProperty({ example: 'Resumo do artigo...', nullable: true })
-  @Column({ type: 'longtext', nullable: true })
+  @Column({ type: 'text', nullable: true })
   summary: string | null;
 
   // summaryCorrected texto longo, null true
   @ApiProperty({ example: 'Resumo corrigido...', nullable: true })
-  @Column({ name: 'summary_corrected', type: 'longtext', nullable: true })
+  @Column({ name: 'summary_corrected', type: 'text', nullable: true })
   summaryCorrected: string | null;
 
   // score int, null true
