@@ -4,16 +4,19 @@ import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { Article } from './entities/article.entity';
+import { ArticleStatus } from './enums/article-status.enum';
 
 const buildArticle = (overrides: Partial<Article> = {}): Article => ({
   id: 1,
   title: 'The Pragmatic Programmer',
+  link: null,
   readingTime: 5,
   timeRead: 7,
   timeWrite: 12,
   summary: 'Resumo do artigo',
   summaryCorrected: null,
   score: 8,
+  status: ArticleStatus.APPLYING_CORRECTION,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,

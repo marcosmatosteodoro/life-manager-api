@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { Article } from './entities/article.entity';
+import { ArticleStatus } from './enums/article-status.enum';
 
 // Mock tipado do Repository — nenhuma chamada real ao banco.
 type MockRepository<T extends object = object> = Partial<
@@ -24,12 +25,14 @@ const createMockRepository = (): MockRepository<Article> => ({
 const buildArticle = (overrides: Partial<Article> = {}): Article => ({
   id: 1,
   title: 'The Pragmatic Programmer',
+  link: null,
   readingTime: 5,
   timeRead: 7,
   timeWrite: 12,
   summary: 'Resumo do artigo',
   summaryCorrected: null,
   score: 8,
+  status: ArticleStatus.APPLYING_CORRECTION,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,
@@ -79,6 +82,64 @@ describe('ArticleService', () => {
       expect(repository.create).toHaveBeenCalledWith(dto);
       expect(repository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(entity);
+    });
+  });
+
+  describe('status (calculado pelo back)', () => {
+    // create monta a entidade a partir do dto e salva o que recebeu.
+    beforeEach(() => {
+      repository.create!.mockImplementation((dto) => ({ ...dto }) as Article);
+      repository.save!.mockImplementation((a) => Promise.resolve(a as Article));
+    });
+
+    const base = { title: 'X', readingTime: 5 };
+
+    it('READING_IN_PROGRESS quando não há timeRead (default)', async () => {
+      const r = await service.create({ ...base });
+      expect(r.status).toBe(ArticleStatus.READING_IN_PROGRESS);
+    });
+
+    it('SUMMARY_IN_PROGRESS quando há timeRead mas falta timeWrite ou summary', async () => {
+      const r = await service.create({ ...base, timeRead: 7 });
+      expect(r.status).toBe(ArticleStatus.SUMMARY_IN_PROGRESS);
+
+      const r2 = await service.create({ ...base, timeRead: 7, timeWrite: 12 });
+      expect(r2.status).toBe(ArticleStatus.SUMMARY_IN_PROGRESS);
+    });
+
+    it('APPLYING_CORRECTION quando falta apenas summaryCorrected', async () => {
+      const r = await service.create({
+        ...base,
+        timeRead: 7,
+        timeWrite: 12,
+        summary: 'resumo',
+      });
+      expect(r.status).toBe(ArticleStatus.APPLYING_CORRECTION);
+    });
+
+    it('COMPLETED quando tudo preenchido (link ignorado)', async () => {
+      const r = await service.create({
+        ...base,
+        timeRead: 7,
+        timeWrite: 12,
+        summary: 'resumo',
+        summaryCorrected: 'corrigido',
+      });
+      expect(r.status).toBe(ArticleStatus.COMPLETED);
+    });
+
+    it('recalcula o status no update sobre o registro mesclado', async () => {
+      // Registro existente sem summaryCorrected -> ao preencher, vira COMPLETED.
+      repository.preload!.mockImplementation((data) =>
+        Promise.resolve({
+          timeRead: 7,
+          timeWrite: 12,
+          summary: 'resumo',
+          ...data,
+        } as Article),
+      );
+      const r = await service.update(1, { summaryCorrected: 'corrigido' });
+      expect(r.status).toBe(ArticleStatus.COMPLETED);
     });
   });
 

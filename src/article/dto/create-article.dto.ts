@@ -14,17 +14,24 @@ export class CreateArticleDto {
   @IsNotEmpty()
   title: string;
 
+  // link varchar, opcional.
+  @ApiPropertyOptional({ example: 'https://exemplo.com/artigo' })
+  @IsOptional()
+  @IsString()
+  link?: string;
+
   // readingTime int, obrigatório e positivo.
   @ApiProperty({ example: 5, description: 'Tempo estimado de leitura (minutos)' })
   @IsInt()
   @IsPositive()
   readingTime: number;
 
-  // timeRead int, obrigatório e positivo.
-  @ApiProperty({ example: 7, description: 'Tempo gasto na leitura (minutos)' })
+  // timeRead int, opcional (não é mais obrigatório).
+  @ApiPropertyOptional({ example: 7, description: 'Tempo gasto na leitura (minutos)' })
+  @IsOptional()
   @IsInt()
   @IsPositive()
-  timeRead: number;
+  timeRead?: number;
 
   // timeWrite int, opcional.
   @ApiPropertyOptional({ example: 12 })
