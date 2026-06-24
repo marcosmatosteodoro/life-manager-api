@@ -10,6 +10,8 @@ import { CountryModule } from './country/country.module';
 import { CompanyModule } from './company/company.module';
 import { ApplyModule } from './apply/apply.module';
 import { DiaryModule } from './diary/diary.module';
+import { FlashCardGroupModule } from './flash-card-group/flash-card-group.module';
+import { FlashCardModule } from './flash-card/flash-card.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { DiaryModule } from './diary/diary.module';
     CompanyModule,
     ApplyModule,
     DiaryModule,
+    FlashCardGroupModule,
+    FlashCardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
