@@ -1,22 +1,42 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getDataSourceToken } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-describe('AppController', () => {
-  let appController: AppController;
-
-  beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
+describe('AppController (health check)', () => {
+  function createController(query: jest.Mock) {
+    return Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [
+        AppService,
+        { provide: getDataSourceToken(), useValue: { query } },
+      ],
     }).compile();
+  }
 
-    appController = app.get<AppController>(AppController);
+  it('retorna status ok e db up quando o banco responde', async () => {
+    const app: TestingModule = await createController(
+      jest.fn().mockResolvedValue([{ result: 1 }]),
+    );
+    const controller = app.get<AppController>(AppController);
+
+    const result = await controller.healthCheck();
+
+    expect(result.status).toBe('ok');
+    expect(result.db).toBe('up');
+    expect(typeof result.uptime).toBe('number');
+    expect(typeof result.timestamp).toBe('string');
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
+  it('lança 503 com db down quando o banco falha', async () => {
+    const app: TestingModule = await createController(
+      jest.fn().mockRejectedValue(new Error('connection refused')),
+    );
+    const controller = app.get<AppController>(AppController);
+
+    await expect(controller.healthCheck()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 });
