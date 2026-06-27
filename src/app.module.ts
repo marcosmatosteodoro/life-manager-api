@@ -14,6 +14,7 @@ import { FlashCardGroupModule } from './flash-card-group/flash-card-group.module
 import { FlashCardModule } from './flash-card/flash-card.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AuthModule } from './auth/auth.module';
+import { JobSearchModule } from './job-search/job-search.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { AuthModule } from './auth/auth.module';
     FlashCardModule,
     FeedbackModule,
     AuthModule,
+    JobSearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],
