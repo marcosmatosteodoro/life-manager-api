@@ -12,6 +12,7 @@ import { ApplyModule } from './apply/apply.module';
 import { DiaryModule } from './diary/diary.module';
 import { FlashCardGroupModule } from './flash-card-group/flash-card-group.module';
 import { FlashCardModule } from './flash-card/flash-card.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
