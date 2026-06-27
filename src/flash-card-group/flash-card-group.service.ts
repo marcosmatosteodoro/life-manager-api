@@ -19,8 +19,11 @@ export class FlashCardGroupService {
 
   /**
    * Flashcards do grupo ordenados para revisão:
-   * - score negativo primeiro;
-   * - depois por lastReview mais antigo (nunca revisado primeiro) e score mais baixo.
+   * - score negativo (cards "difíceis") primeiro;
+   * - depois por lastReview mais antigo (nunca revisado primeiro);
+   * - empate final aleatório (RANDOM): dá variedade dia a dia e evita
+   *   memorizar a sequência em vez do termo. RANDOM() é sintaxe Postgres
+   *   (banco padrão do app).
    */
   async review(id: number): Promise<FlashCard[]> {
     const exists = await this.groupRepository.countBy({ id });
@@ -32,7 +35,7 @@ export class FlashCardGroupService {
       .where('card.flashCardGroupId = :id', { id })
       .orderBy('CASE WHEN card.score < 0 THEN 0 ELSE 1 END', 'ASC')
       .addOrderBy('card.lastReview', 'ASC', 'NULLS FIRST')
-      .addOrderBy('card.score', 'ASC')
+      .addOrderBy('RANDOM()')
       .getMany();
     return cards.map(attachTotalReviews);
   }

@@ -190,7 +190,8 @@ describe('FlashCardGroupService', () => {
         'ASC',
         'NULLS FIRST',
       );
-      expect(qb.addOrderBy).toHaveBeenCalledWith('card.score', 'ASC');
+      // Desempate aleatório para variar a ordem a cada dia.
+      expect(qb.addOrderBy).toHaveBeenCalledWith('RANDOM()');
       expect(result[0].totalReviews).toBe(3);
     });
 
