@@ -11,10 +11,12 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { ArticleService } from './article.service';
@@ -33,6 +35,19 @@ export class ArticleController {
   @ApiOkResponse({ type: Article })
   create(@Body() createArticleDto: CreateArticleDto) {
     return this.articleService.create(createArticleDto);
+  }
+
+  @Post(':id/correct-summary')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Corrige o resumo do artigo via IA e atribui uma pontuação',
+  })
+  @ApiOkResponse({ type: Article })
+  @ApiBadRequestResponse({ description: 'Sem resumo ou resumo muito longo' })
+  @ApiNotFoundResponse({ description: 'Registro não encontrado' })
+  @ApiServiceUnavailableResponse({ description: 'Falha no serviço de IA' })
+  correctSummary(@Param('id', ParseIntPipe) id: number) {
+    return this.articleService.correctSummary(id);
   }
 
   @Get()

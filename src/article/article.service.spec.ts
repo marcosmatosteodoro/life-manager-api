@@ -1,7 +1,12 @@
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AiService } from '../ai/ai.service';
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { Article } from './entities/article.entity';
@@ -42,8 +47,10 @@ const buildArticle = (overrides: Partial<Article> = {}): Article => ({
 describe('ArticleService', () => {
   let service: ArticleService;
   let repository: MockRepository<Article>;
+  let aiService: { complete: jest.Mock };
 
   beforeEach(async () => {
+    aiService = { complete: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ArticleService,
@@ -51,6 +58,7 @@ describe('ArticleService', () => {
           provide: getRepositoryToken(Article),
           useValue: createMockRepository(),
         },
+        { provide: AiService, useValue: aiService },
       ],
     }).compile();
 
@@ -218,6 +226,79 @@ describe('ArticleService', () => {
       repository.delete!.mockResolvedValue({ affected: 0, raw: [] });
 
       await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('correctSummary', () => {
+    const validJson = JSON.stringify({
+      correctedSummary: '<p>Corrected summary.</p>',
+      score: 9,
+    });
+
+    it('corrige o resumo, salva summaryCorrected + score e fica COMPLETED', async () => {
+      const article = buildArticle({ summaryCorrected: null, score: null });
+      repository.findOne!.mockResolvedValue(article);
+      aiService.complete.mockResolvedValue(validJson);
+      repository.save!.mockImplementation((a) => Promise.resolve(a as Article));
+
+      const result = await service.correctSummary(1);
+
+      expect(aiService.complete).toHaveBeenCalledTimes(1);
+      expect(result.summaryCorrected).toBe('<p>Corrected summary.</p>');
+      expect(result.score).toBe(9);
+      expect(result.status).toBe(ArticleStatus.COMPLETED);
+    });
+
+    it('limita a nota ao intervalo 0..10 mesmo se o modelo extrapolar', async () => {
+      repository.findOne!.mockResolvedValue(buildArticle());
+      aiService.complete.mockResolvedValue(
+        JSON.stringify({ correctedSummary: '<p>x</p>', score: 42 }),
+      );
+      repository.save!.mockImplementation((a) => Promise.resolve(a as Article));
+
+      const result = await service.correctSummary(1);
+
+      expect(result.score).toBe(10);
+    });
+
+    it('lança NotFound quando o artigo não existe', async () => {
+      repository.findOne!.mockResolvedValue(null);
+
+      await expect(service.correctSummary(999)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(aiService.complete).not.toHaveBeenCalled();
+    });
+
+    it('lança BadRequest quando não há resumo (e não chama a IA)', async () => {
+      repository.findOne!.mockResolvedValue(buildArticle({ summary: null }));
+
+      await expect(service.correctSummary(1)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(aiService.complete).not.toHaveBeenCalled();
+    });
+
+    it('propaga falha da IA e não salva nada', async () => {
+      repository.findOne!.mockResolvedValue(buildArticle());
+      aiService.complete.mockRejectedValue(
+        new ServiceUnavailableException('indisponível'),
+      );
+
+      await expect(service.correctSummary(1)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('erro quando a IA devolve JSON inválido (e não salva)', async () => {
+      repository.findOne!.mockResolvedValue(buildArticle());
+      aiService.complete.mockResolvedValue('isto não é json');
+
+      await expect(service.correctSummary(1)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 });

@@ -34,6 +34,7 @@ describe('ArticleController', () => {
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      correctSummary: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -94,5 +95,17 @@ describe('ArticleController', () => {
 
     await expect(controller.remove(1)).resolves.toBeUndefined();
     expect(service.remove).toHaveBeenCalledWith(1);
+  });
+
+  it('correctSummary repassa o id para o service', async () => {
+    const corrected = buildArticle({
+      summaryCorrected: '<p>corrigido</p>',
+      score: 9,
+      status: ArticleStatus.COMPLETED,
+    });
+    service.correctSummary.mockResolvedValue(corrected);
+
+    await expect(controller.correctSummary(1)).resolves.toEqual(corrected);
+    expect(service.correctSummary).toHaveBeenCalledWith(1);
   });
 });
