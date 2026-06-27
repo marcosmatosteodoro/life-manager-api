@@ -4,10 +4,11 @@ import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.en
 import { FlashCardController } from './flash-card.controller';
 import { FlashCardService } from './flash-card.service';
 import { FlashCard } from './entities/flash-card.entity';
+import { TranslationService } from './translation.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([FlashCard, FlashCardGroup])],
-  providers: [FlashCardService],
+  providers: [FlashCardService, TranslationService],
   controllers: [FlashCardController],
 })
 export class FlashCardModule {}

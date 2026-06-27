@@ -27,6 +27,16 @@ export class FlashCard {
   @Column({ type: 'varchar', length: 255, nullable: true })
   value: string | null;
 
+  // translation varchar, null true — tradução automática (cache do tradutor)
+  @ApiProperty({
+    example: 'desistir',
+    nullable: true,
+    description:
+      'Tradução automática (en→pt) salva ao traduzir; reusada depois',
+  })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  translation: string | null;
+
   // picture varchar (link da imagem no CDN), null true
   @ApiProperty({
     example: 'https://cdn.exemplo.com/giveup.png',

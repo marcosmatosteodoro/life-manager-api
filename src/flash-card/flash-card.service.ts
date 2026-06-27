@@ -8,6 +8,7 @@ import { ReviewFlashCardItemDto } from './dto/review-flash-card.dto';
 import { UpdateFlashCardDto } from './dto/update-flash-card.dto';
 import { FlashCard } from './entities/flash-card.entity';
 import { attachTotalReviews } from './flash-card.util';
+import { TranslationService } from './translation.service';
 
 @Injectable()
 export class FlashCardService {
@@ -16,6 +17,7 @@ export class FlashCardService {
     private readonly flashCardRepository: Repository<FlashCard>,
     @InjectRepository(FlashCardGroup)
     private readonly groupRepository: Repository<FlashCardGroup>,
+    private readonly translationService: TranslationService,
   ) {}
 
   async create(dto: CreateFlashCardDto): Promise<FlashCard> {
@@ -65,6 +67,22 @@ export class FlashCardService {
       throw new NotFoundException(`FlashCard #${id} não encontrado`);
     }
     this.applyReview(card, correct);
+    return attachTotalReviews(await this.flashCardRepository.save(card));
+  }
+
+  /**
+   * Traduz o termo (en→pt) e salva em `translation`. Se já houver tradução
+   * salva, devolve a do banco sem chamar o tradutor de novo (cache).
+   */
+  async translate(id: number): Promise<FlashCard> {
+    const card = await this.flashCardRepository.findOne({ where: { id } });
+    if (!card) {
+      throw new NotFoundException(`FlashCard #${id} não encontrado`);
+    }
+    if (card.translation) {
+      return attachTotalReviews(card);
+    }
+    card.translation = await this.translationService.translate(card.term);
     return attachTotalReviews(await this.flashCardRepository.save(card));
   }
 

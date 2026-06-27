@@ -74,6 +74,16 @@ export class FlashCardController {
     return this.service.review(id, dto.correctAnswers);
   }
 
+  @Post(':id/translate')
+  @ApiOperation({
+    summary: 'Traduz o termo (en→pt) e salva; reusa a tradução já salva',
+  })
+  @ApiOkResponse({ type: FlashCard })
+  @ApiNotFoundResponse({ description: 'Registro não encontrado' })
+  translate(@Param('id', ParseIntPipe) id: number) {
+    return this.service.translate(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Busca um flashcard por id' })
   @ApiOkResponse({ type: FlashCard })

@@ -40,6 +40,7 @@ const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
   id: 1,
   term: 'give up',
   value: 'desistir',
+  translation: null,
   picture: null,
   correctAnswers: 3,
   wrongAnswers: 1,

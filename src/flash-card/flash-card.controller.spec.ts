@@ -7,6 +7,7 @@ const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
   id: 1,
   term: 'give up',
   value: 'desistir',
+  translation: null,
   picture: null,
   correctAnswers: 0,
   wrongAnswers: 0,
@@ -33,6 +34,7 @@ describe('FlashCardController', () => {
       remove: jest.fn(),
       review: jest.fn(),
       reviewBatch: jest.fn(),
+      translate: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FlashCardController],
@@ -94,6 +96,13 @@ describe('FlashCardController', () => {
     const items = [{ id: 1, correctAnswers: true }];
     await expect(controller.reviewBatch(items)).resolves.toEqual(cards);
     expect(service.reviewBatch).toHaveBeenCalledWith(items);
+  });
+
+  it('translate repassa o id', async () => {
+    const card = buildCard({ translation: 'desistir' });
+    service.translate.mockResolvedValue(card);
+    await expect(controller.translate(1)).resolves.toEqual(card);
+    expect(service.translate).toHaveBeenCalledWith(1);
   });
 
   it('remove repassa o id', async () => {

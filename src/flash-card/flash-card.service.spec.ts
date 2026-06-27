@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
 import { FlashCard } from './entities/flash-card.entity';
 import { FlashCardService } from './flash-card.service';
+import { TranslationService } from './translation.service';
 
 type MockRepository<T extends object = object> = Partial<
   Record<keyof Repository<T>, jest.Mock>
@@ -24,6 +25,7 @@ const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
   id: 1,
   term: 'give up',
   value: 'desistir',
+  translation: null,
   picture: null,
   correctAnswers: 0,
   wrongAnswers: 0,
@@ -40,8 +42,10 @@ describe('FlashCardService', () => {
   let service: FlashCardService;
   let cardRepo: MockRepository<FlashCard>;
   let groupRepo: MockRepository<FlashCardGroup>;
+  let translation: { translate: jest.Mock };
 
   beforeEach(async () => {
+    translation = { translate: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FlashCardService,
@@ -53,6 +57,7 @@ describe('FlashCardService', () => {
           provide: getRepositoryToken(FlashCardGroup),
           useValue: createMockRepository<FlashCardGroup>(),
         },
+        { provide: TranslationService, useValue: translation },
       ],
     }).compile();
 
@@ -183,6 +188,38 @@ describe('FlashCardService', () => {
       await expect(service.review(999, true)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('translate', () => {
+    it('traduz, salva em translation e retorna o card', async () => {
+      const card = buildCard({ term: 'give up', translation: null });
+      cardRepo.findOne!.mockResolvedValue(card);
+      translation.translate.mockResolvedValue('desistir');
+      cardRepo.save!.mockImplementation((c) => Promise.resolve(c as FlashCard));
+
+      const result = await service.translate(1);
+
+      expect(translation.translate).toHaveBeenCalledWith('give up');
+      expect(result.translation).toBe('desistir');
+      expect(cardRepo.save).toHaveBeenCalled();
+    });
+
+    it('reusa a tradução salva sem chamar o tradutor (cache)', async () => {
+      const card = buildCard({ translation: 'desistir' });
+      cardRepo.findOne!.mockResolvedValue(card);
+
+      const result = await service.translate(1);
+
+      expect(result.translation).toBe('desistir');
+      expect(translation.translate).not.toHaveBeenCalled();
+      expect(cardRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('lança NotFoundException quando o card não existe', async () => {
+      cardRepo.findOne!.mockResolvedValue(null);
+      await expect(service.translate(999)).rejects.toThrow(NotFoundException);
+      expect(translation.translate).not.toHaveBeenCalled();
     });
   });
 
