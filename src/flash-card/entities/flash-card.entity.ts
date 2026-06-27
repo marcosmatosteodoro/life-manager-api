@@ -28,7 +28,10 @@ export class FlashCard {
   value: string | null;
 
   // picture varchar (link da imagem no CDN), null true
-  @ApiProperty({ example: 'https://cdn.exemplo.com/giveup.png', nullable: true })
+  @ApiProperty({
+    example: 'https://cdn.exemplo.com/giveup.png',
+    nullable: true,
+  })
   @Column({ type: 'varchar', length: 255, nullable: true })
   picture: string | null;
 

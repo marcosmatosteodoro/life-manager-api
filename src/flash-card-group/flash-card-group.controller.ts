@@ -71,7 +71,9 @@ export class FlashCardGroupController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Busca um grupo por id (com flashcards e contagem)' })
+  @ApiOperation({
+    summary: 'Busca um grupo por id (com flashcards e contagem)',
+  })
   @ApiOkResponse({ type: FlashCardGroup })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   findOne(@Param('id', ParseIntPipe) id: number) {

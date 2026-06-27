@@ -7,6 +7,10 @@ export class DailyCheckListResponseDto {
   count: number;
 
   // rows: os dados em si
-  @ApiProperty({ type: DailyCheck, isArray: true, description: 'Checks diários' })
+  @ApiProperty({
+    type: DailyCheck,
+    isArray: true,
+    description: 'Checks diários',
+  })
   rows: DailyCheck[];
 }

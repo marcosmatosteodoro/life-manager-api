@@ -20,22 +20,21 @@ const createMockRepository = <T extends object>(): MockRepository<T> => ({
   delete: jest.fn(),
 });
 
-const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard =>
-  ({
-    id: 1,
-    term: 'give up',
-    value: 'desistir',
-    picture: null,
-    correctAnswers: 0,
-    wrongAnswers: 0,
-    score: 0,
-    lastReview: null,
-    flashCardGroupId: 1,
-    createdAt: new Date('2026-06-24T08:30:00.000Z'),
-    updatedAt: new Date('2026-06-24T08:30:00.000Z'),
-    creatorId: null,
-    ...overrides,
-  }) as FlashCard;
+const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
+  id: 1,
+  term: 'give up',
+  value: 'desistir',
+  picture: null,
+  correctAnswers: 0,
+  wrongAnswers: 0,
+  score: 0,
+  lastReview: null,
+  flashCardGroupId: 1,
+  createdAt: new Date('2026-06-24T08:30:00.000Z'),
+  updatedAt: new Date('2026-06-24T08:30:00.000Z'),
+  creatorId: null,
+  ...overrides,
+});
 
 describe('FlashCardService', () => {
   let service: FlashCardService;
@@ -75,7 +74,10 @@ describe('FlashCardService', () => {
       cardRepo.create!.mockReturnValue(entity);
       cardRepo.save!.mockResolvedValue(entity);
 
-      const result = await service.create({ term: 'give up', flashCardGroupId: 1 });
+      const result = await service.create({
+        term: 'give up',
+        flashCardGroupId: 1,
+      });
 
       expect(groupRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(result.totalReviews).toBe(0);
@@ -178,7 +180,9 @@ describe('FlashCardService', () => {
 
     it('lança NotFoundException quando o card não existe', async () => {
       cardRepo.findOne!.mockResolvedValue(null);
-      await expect(service.review(999, true)).rejects.toThrow(NotFoundException);
+      await expect(service.review(999, true)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -189,7 +193,9 @@ describe('FlashCardService', () => {
         buildCard({ id: 2, wrongAnswers: 0, score: 0 }),
       ];
       cardRepo.find!.mockResolvedValue(cards);
-      cardRepo.save!.mockImplementation((c) => Promise.resolve(c as FlashCard[]));
+      cardRepo.save!.mockImplementation((c) =>
+        Promise.resolve(c as FlashCard[]),
+      );
 
       const result = await service.reviewBatch([
         { id: 1, correctAnswers: true },

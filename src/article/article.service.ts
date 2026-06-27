@@ -141,7 +141,10 @@ export class ArticleService {
       );
     }
     const obj = parsed as Partial<CorrectSummaryResult>;
-    if (typeof obj.correctedSummary !== 'string' || typeof obj.score !== 'number') {
+    if (
+      typeof obj.correctedSummary !== 'string' ||
+      typeof obj.score !== 'number'
+    ) {
       throw new ServiceUnavailableException(
         'A resposta da IA veio incompleta. Tente novamente.',
       );

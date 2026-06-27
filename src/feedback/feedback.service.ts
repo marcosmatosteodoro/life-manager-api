@@ -148,9 +148,7 @@ export class FeedbackService {
         ultimo: weights[weights.length - 1]?.value ?? null,
         variacao:
           weights.length >= 2
-            ? this.round(
-                weights[weights.length - 1].value - weights[0].value,
-              )
+            ? this.round(weights[weights.length - 1].value - weights[0].value)
             : null,
       },
       estudoIngles: {
@@ -172,10 +170,7 @@ export class FeedbackService {
       },
       revisoesFlashcards: {
         cardsRevisadosNoPeriodo: flashCards.length,
-        acertosAcumulados: flashCards.reduce(
-          (s, c) => s + c.correctAnswers,
-          0,
-        ),
+        acertosAcumulados: flashCards.reduce((s, c) => s + c.correctAnswers, 0),
         errosAcumulados: flashCards.reduce((s, c) => s + c.wrongAnswers, 0),
         obs: 'acertos/erros são acumulados por card (lifetime), não apenas do período',
       },

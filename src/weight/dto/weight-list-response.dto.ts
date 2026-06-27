@@ -7,6 +7,10 @@ export class WeightListResponseDto {
   count: number;
 
   // rows: os dados em si
-  @ApiProperty({ type: Weight, isArray: true, description: 'Registros de peso' })
+  @ApiProperty({
+    type: Weight,
+    isArray: true,
+    description: 'Registros de peso',
+  })
   rows: Weight[];
 }

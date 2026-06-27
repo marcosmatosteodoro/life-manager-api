@@ -12,7 +12,10 @@ import { DiaryType } from '../enums/diary-type.enum';
 
 export class CreateDiaryDto {
   // day date, obrigatório (YYYY-MM-DD).
-  @ApiProperty({ example: '2026-06-24', description: 'Dia do registro (YYYY-MM-DD)' })
+  @ApiProperty({
+    example: '2026-06-24',
+    description: 'Dia do registro (YYYY-MM-DD)',
+  })
   @IsDateString()
   day: string;
 
@@ -28,7 +31,10 @@ export class CreateDiaryDto {
   type: DiaryType;
 
   // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({ example: 1, description: 'Id do criador (opcional até haver autenticação)' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Id do criador (opcional até haver autenticação)',
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()

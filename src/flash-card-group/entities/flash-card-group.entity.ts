@@ -42,6 +42,9 @@ export class FlashCardGroup {
   flashCards?: FlashCard[];
 
   // Campo calculado em runtime (não persistido): total de flashcards do grupo.
-  @ApiProperty({ example: 12, description: 'Quantidade de flashcards (runtime)' })
+  @ApiProperty({
+    example: 12,
+    description: 'Quantidade de flashcards (runtime)',
+  })
   flashCardsCount?: number;
 }

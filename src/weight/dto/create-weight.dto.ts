@@ -16,12 +16,18 @@ export class CreateWeightDto {
   value: number;
 
   // date obrigatório, formato ISO (YYYY-MM-DD).
-  @ApiProperty({ example: '2026-06-22', description: 'Data da medição (YYYY-MM-DD)' })
+  @ApiProperty({
+    example: '2026-06-22',
+    description: 'Data da medição (YYYY-MM-DD)',
+  })
   @IsDateString()
   date: string;
 
   // time opcional, formato HH:MM ou HH:MM:SS.
-  @ApiPropertyOptional({ example: '08:30:00', description: 'Hora da medição (HH:MM ou HH:MM:SS)' })
+  @ApiPropertyOptional({
+    example: '08:30:00',
+    description: 'Hora da medição (HH:MM ou HH:MM:SS)',
+  })
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, {
     message: 'time deve estar no formato HH:MM ou HH:MM:SS',
@@ -29,7 +35,10 @@ export class CreateWeightDto {
   time?: string;
 
   // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({ example: 1, description: 'Id do criador (opcional até haver autenticação)' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Id do criador (opcional até haver autenticação)',
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()

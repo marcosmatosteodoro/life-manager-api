@@ -5,7 +5,10 @@ import { IsBoolean, IsInt, IsPositive } from 'class-validator';
 export class ReviewFlashCardDto {
   // true = acertou (+1 correctAnswers, +1 score)
   // false = errou (+1 wrongAnswers, -1 score)
-  @ApiProperty({ example: true, description: 'Acertou (true) ou errou (false)' })
+  @ApiProperty({
+    example: true,
+    description: 'Acertou (true) ou errou (false)',
+  })
   @IsBoolean()
   correctAnswers: boolean;
 }
@@ -17,7 +20,10 @@ export class ReviewFlashCardItemDto {
   @IsPositive()
   id: number;
 
-  @ApiProperty({ example: true, description: 'Acertou (true) ou errou (false)' })
+  @ApiProperty({
+    example: true,
+    description: 'Acertou (true) ou errou (false)',
+  })
   @IsBoolean()
   correctAnswers: boolean;
 }

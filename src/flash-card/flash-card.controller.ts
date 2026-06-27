@@ -37,7 +37,9 @@ export class FlashCardController {
   @Post()
   @ApiOperation({ summary: 'Cria um flashcard' })
   @ApiOkResponse({ type: FlashCard })
-  @ApiNotFoundResponse({ description: 'Grupo (flashCardGroupId) não encontrado' })
+  @ApiNotFoundResponse({
+    description: 'Grupo (flashCardGroupId) não encontrado',
+  })
   create(@Body() dto: CreateFlashCardDto) {
     return this.service.create(dto);
   }

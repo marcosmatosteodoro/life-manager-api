@@ -3,17 +3,18 @@ import { FlashCardGroupController } from './flash-card-group.controller';
 import { FlashCardGroupService } from './flash-card-group.service';
 import { FlashCardGroup } from './entities/flash-card-group.entity';
 
-const buildGroup = (overrides: Partial<FlashCardGroup> = {}): FlashCardGroup =>
-  ({
-    id: 1,
-    name: 'Phrasal Verbs',
-    createdAt: new Date('2026-06-24T08:30:00.000Z'),
-    updatedAt: new Date('2026-06-24T08:30:00.000Z'),
-    creatorId: null,
-    flashCards: [],
-    flashCardsCount: 0,
-    ...overrides,
-  }) as FlashCardGroup;
+const buildGroup = (
+  overrides: Partial<FlashCardGroup> = {},
+): FlashCardGroup => ({
+  id: 1,
+  name: 'Phrasal Verbs',
+  createdAt: new Date('2026-06-24T08:30:00.000Z'),
+  updatedAt: new Date('2026-06-24T08:30:00.000Z'),
+  creatorId: null,
+  flashCards: [],
+  flashCardsCount: 0,
+  ...overrides,
+});
 
 describe('FlashCardGroupController', () => {
   let controller: FlashCardGroupController;
@@ -69,7 +70,9 @@ describe('FlashCardGroupController', () => {
   it('update repassa id e dto', async () => {
     const updated = buildGroup({ name: 'Novo' });
     service.update.mockResolvedValue(updated);
-    await expect(controller.update(1, { name: 'Novo' })).resolves.toEqual(updated);
+    await expect(controller.update(1, { name: 'Novo' })).resolves.toEqual(
+      updated,
+    );
     expect(service.update).toHaveBeenCalledWith(1, { name: 'Novo' });
   });
 
@@ -88,7 +91,9 @@ describe('FlashCardGroupController', () => {
   it('absorb repassa o id do destino e o sourceId', async () => {
     const merged = buildGroup();
     service.absorb.mockResolvedValue(merged);
-    await expect(controller.absorb(1, { sourceId: 2 })).resolves.toEqual(merged);
+    await expect(controller.absorb(1, { sourceId: 2 })).resolves.toEqual(
+      merged,
+    );
     expect(service.absorb).toHaveBeenCalledWith(1, 2);
   });
 });

@@ -59,7 +59,10 @@ describe('DiaryController', () => {
   });
 
   it('findAll repassa o type para o service', async () => {
-    const payload = { count: 1, rows: [buildDiary({ type: DiaryType.GRATITUDE })] };
+    const payload = {
+      count: 1,
+      rows: [buildDiary({ type: DiaryType.GRATITUDE })],
+    };
     service.findAll.mockResolvedValue(payload);
 
     await expect(controller.findAll(DiaryType.GRATITUDE)).resolves.toEqual(

@@ -121,7 +121,10 @@ describe('CountryService', () => {
 
       const result = await service.update(1, { name: 'Brazil' });
 
-      expect(repository.preload).toHaveBeenCalledWith({ id: 1, name: 'Brazil' });
+      expect(repository.preload).toHaveBeenCalledWith({
+        id: 1,
+        name: 'Brazil',
+      });
       expect(repository.save).toHaveBeenCalledWith(updated);
       expect(result).toEqual(updated);
     });

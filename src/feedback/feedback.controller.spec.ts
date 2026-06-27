@@ -4,20 +4,19 @@ import { FeedbackPeriod } from './enums/feedback-period.enum';
 import { FeedbackController } from './feedback.controller';
 import { FeedbackService } from './feedback.service';
 
-const buildFeedback = (overrides: Partial<Feedback> = {}): Feedback =>
-  ({
-    id: 1,
-    period: FeedbackPeriod.THIRTY_DAYS,
-    periodStart: '2026-05-28',
-    periodEnd: '2026-06-27',
-    inputData: '{}',
-    prompt: 'system\n\nuser',
-    response: '<h3>Feedback</h3>',
-    createdAt: new Date('2026-06-27T08:30:00.000Z'),
-    updatedAt: new Date('2026-06-27T08:30:00.000Z'),
-    creatorId: null,
-    ...overrides,
-  }) as Feedback;
+const buildFeedback = (overrides: Partial<Feedback> = {}): Feedback => ({
+  id: 1,
+  period: FeedbackPeriod.THIRTY_DAYS,
+  periodStart: '2026-05-28',
+  periodEnd: '2026-06-27',
+  inputData: '{}',
+  prompt: 'system\n\nuser',
+  response: '<h3>Feedback</h3>',
+  createdAt: new Date('2026-06-27T08:30:00.000Z'),
+  updatedAt: new Date('2026-06-27T08:30:00.000Z'),
+  creatorId: null,
+  ...overrides,
+});
 
 describe('FeedbackController', () => {
   let controller: FeedbackController;

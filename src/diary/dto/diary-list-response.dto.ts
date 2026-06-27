@@ -7,6 +7,10 @@ export class DiaryListResponseDto {
   count: number;
 
   // rows: os dados em si
-  @ApiProperty({ type: Diary, isArray: true, description: 'Registros do diário' })
+  @ApiProperty({
+    type: Diary,
+    isArray: true,
+    description: 'Registros do diário',
+  })
   rows: Diary[];
 }

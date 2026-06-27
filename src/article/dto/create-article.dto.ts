@@ -21,13 +21,19 @@ export class CreateArticleDto {
   link?: string;
 
   // readingTime int, obrigatório e positivo.
-  @ApiProperty({ example: 5, description: 'Tempo estimado de leitura (minutos)' })
+  @ApiProperty({
+    example: 5,
+    description: 'Tempo estimado de leitura (minutos)',
+  })
   @IsInt()
   @IsPositive()
   readingTime: number;
 
   // timeRead int, opcional (não é mais obrigatório).
-  @ApiPropertyOptional({ example: 7, description: 'Tempo gasto na leitura (minutos)' })
+  @ApiPropertyOptional({
+    example: 7,
+    description: 'Tempo gasto na leitura (minutos)',
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()
@@ -59,7 +65,10 @@ export class CreateArticleDto {
   score?: number;
 
   // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({ example: 1, description: 'Id do criador (opcional até haver autenticação)' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Id do criador (opcional até haver autenticação)',
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()

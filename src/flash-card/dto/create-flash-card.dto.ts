@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 
 export class CreateFlashCardDto {
   // term varchar, obrigatório e não-vazio.
@@ -27,7 +33,10 @@ export class CreateFlashCardDto {
   flashCardGroupId: number;
 
   // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({ example: 1, description: 'Id do criador (opcional até haver autenticação)' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Id do criador (opcional até haver autenticação)',
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()

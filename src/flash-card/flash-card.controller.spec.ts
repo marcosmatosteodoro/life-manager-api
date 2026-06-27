@@ -3,23 +3,22 @@ import { FlashCard } from './entities/flash-card.entity';
 import { FlashCardController } from './flash-card.controller';
 import { FlashCardService } from './flash-card.service';
 
-const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard =>
-  ({
-    id: 1,
-    term: 'give up',
-    value: 'desistir',
-    picture: null,
-    correctAnswers: 0,
-    wrongAnswers: 0,
-    score: 0,
-    lastReview: null,
-    flashCardGroupId: 1,
-    createdAt: new Date('2026-06-24T08:30:00.000Z'),
-    updatedAt: new Date('2026-06-24T08:30:00.000Z'),
-    creatorId: null,
-    totalReviews: 0,
-    ...overrides,
-  }) as FlashCard;
+const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
+  id: 1,
+  term: 'give up',
+  value: 'desistir',
+  picture: null,
+  correctAnswers: 0,
+  wrongAnswers: 0,
+  score: 0,
+  lastReview: null,
+  flashCardGroupId: 1,
+  createdAt: new Date('2026-06-24T08:30:00.000Z'),
+  updatedAt: new Date('2026-06-24T08:30:00.000Z'),
+  creatorId: null,
+  totalReviews: 0,
+  ...overrides,
+});
 
 describe('FlashCardController', () => {
   let controller: FlashCardController;
@@ -74,7 +73,9 @@ describe('FlashCardController', () => {
   it('update repassa id e dto', async () => {
     const updated = buildCard({ term: 'novo' });
     service.update.mockResolvedValue(updated);
-    await expect(controller.update(1, { term: 'novo' })).resolves.toEqual(updated);
+    await expect(controller.update(1, { term: 'novo' })).resolves.toEqual(
+      updated,
+    );
     expect(service.update).toHaveBeenCalledWith(1, { term: 'novo' });
   });
 

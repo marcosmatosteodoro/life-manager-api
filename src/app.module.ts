@@ -48,6 +48,7 @@ import { FeedbackModule } from './feedback/feedback.module';
     DiaryModule,
     FlashCardGroupModule,
     FlashCardModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [AppService],

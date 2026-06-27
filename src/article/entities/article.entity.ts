@@ -26,7 +26,10 @@ export class Article {
   link: string | null;
 
   // readingTime int, not null
-  @ApiProperty({ example: 5, description: 'Tempo estimado de leitura (minutos)' })
+  @ApiProperty({
+    example: 5,
+    description: 'Tempo estimado de leitura (minutos)',
+  })
   @Column({ name: 'reading_time', type: 'int', nullable: false })
   readingTime: number;
 
@@ -40,7 +43,10 @@ export class Article {
   timeRead: number | null;
 
   // status enum — calculado pelo back, não editável pelo front
-  @ApiProperty({ enum: ArticleStatus, example: ArticleStatus.READING_IN_PROGRESS })
+  @ApiProperty({
+    enum: ArticleStatus,
+    example: ArticleStatus.READING_IN_PROGRESS,
+  })
   @Column({
     type: 'enum',
     enum: ArticleStatus,

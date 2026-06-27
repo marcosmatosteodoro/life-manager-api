@@ -45,8 +45,10 @@ describe('FeedbackService', () => {
     aiService = { complete: jest.fn() };
 
     // create devolve o que recebe; save resolve com id.
-    feedbackRepo.create.mockImplementation((d) => ({ ...d }) as Feedback);
-    feedbackRepo.save.mockImplementation((f) =>
+    feedbackRepo.create.mockImplementation(
+      (d: Partial<Feedback>) => ({ ...d }) as Feedback,
+    );
+    feedbackRepo.save.mockImplementation((f: Partial<Feedback>) =>
       Promise.resolve({ id: 1, ...f } as Feedback),
     );
 
@@ -111,12 +113,17 @@ describe('FeedbackService', () => {
       });
 
       expect(aiService.complete).toHaveBeenCalledTimes(1);
-      const saved = feedbackRepo.save.mock.calls[0][0];
-      expect(saved.period).toBe(FeedbackPeriod.THIRTY_DAYS);
-      expect(saved.response).toBe('<h3>Feedback</h3>');
-      expect(saved.periodStart).not.toBeNull();
+      // save devolve o objeto salvo, então result reflete o que foi persistido.
+      expect(result.period).toBe(FeedbackPeriod.THIRTY_DAYS);
+      expect(result.response).toBe('<h3>Feedback</h3>');
+      expect(result.periodStart).not.toBeNull();
       // O JSON salvo reflete a agregação.
-      const data = JSON.parse(saved.inputData);
+      const data = JSON.parse(result.inputData) as {
+        peso: { variacao: number | null };
+        estudoIngles: { notaMedia: number | null };
+        consistencia: { leitura: number };
+        vagas: { total: number };
+      };
       expect(data.peso.variacao).toBe(-1.5);
       expect(data.estudoIngles.notaMedia).toBe(8);
       expect(data.consistencia.leitura).toBe(1);
@@ -127,10 +134,9 @@ describe('FeedbackService', () => {
     it('período "all" não define limite inferior (periodStart null)', async () => {
       aiService.complete.mockResolvedValue('<p>ok</p>');
 
-      await service.generate({ period: FeedbackPeriod.ALL });
+      const result = await service.generate({ period: FeedbackPeriod.ALL });
 
-      const saved = feedbackRepo.save.mock.calls[0][0];
-      expect(saved.periodStart).toBeNull();
+      expect(result.periodStart).toBeNull();
     });
 
     it('propaga falha da IA e não salva', async () => {

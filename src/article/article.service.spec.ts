@@ -81,7 +81,11 @@ describe('ArticleService', () => {
         readingTime: 5,
         timeRead: 7,
       };
-      const entity = buildArticle({ timeWrite: null, summary: null, score: null });
+      const entity = buildArticle({
+        timeWrite: null,
+        summary: null,
+        score: null,
+      });
       repository.create!.mockReturnValue(entity);
       repository.save!.mockResolvedValue(entity);
 

@@ -41,7 +41,10 @@ describe('DiaryService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DiaryService,
-        { provide: getRepositoryToken(Diary), useValue: createMockRepository() },
+        {
+          provide: getRepositoryToken(Diary),
+          useValue: createMockRepository(),
+        },
       ],
     }).compile();
 
@@ -147,9 +150,9 @@ describe('DiaryService', () => {
     it('lança NotFoundException quando o id não existe (preload null)', async () => {
       repository.preload!.mockResolvedValue(undefined);
 
-      await expect(
-        service.update(999, { description: 'x' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update(999, { description: 'x' })).rejects.toThrow(
+        NotFoundException,
+      );
       expect(repository.save).not.toHaveBeenCalled();
     });
   });

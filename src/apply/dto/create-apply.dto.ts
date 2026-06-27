@@ -18,7 +18,10 @@ export class CreateApplyDto {
   name: string;
 
   // date date, obrigatório (YYYY-MM-DD).
-  @ApiProperty({ example: '2026-06-22', description: 'Data da candidatura (YYYY-MM-DD)' })
+  @ApiProperty({
+    example: '2026-06-22',
+    description: 'Data da candidatura (YYYY-MM-DD)',
+  })
   @IsDateString()
   date: string;
 
@@ -46,7 +49,10 @@ export class CreateApplyDto {
   description?: string;
 
   // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({ example: 1, description: 'Id do criador (opcional até haver autenticação)' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Id do criador (opcional até haver autenticação)',
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()

@@ -36,33 +36,33 @@ const createQueryBuilderMock = () => {
   return qb;
 };
 
-const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard =>
-  ({
-    id: 1,
-    term: 'give up',
-    value: 'desistir',
-    picture: null,
-    correctAnswers: 3,
-    wrongAnswers: 1,
-    score: 2,
-    lastReview: null,
-    flashCardGroupId: 1,
-    createdAt: new Date('2026-06-24T08:30:00.000Z'),
-    updatedAt: new Date('2026-06-24T08:30:00.000Z'),
-    creatorId: null,
-    ...overrides,
-  }) as FlashCard;
+const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
+  id: 1,
+  term: 'give up',
+  value: 'desistir',
+  picture: null,
+  correctAnswers: 3,
+  wrongAnswers: 1,
+  score: 2,
+  lastReview: null,
+  flashCardGroupId: 1,
+  createdAt: new Date('2026-06-24T08:30:00.000Z'),
+  updatedAt: new Date('2026-06-24T08:30:00.000Z'),
+  creatorId: null,
+  ...overrides,
+});
 
-const buildGroup = (overrides: Partial<FlashCardGroup> = {}): FlashCardGroup =>
-  ({
-    id: 1,
-    name: 'Phrasal Verbs',
-    createdAt: new Date('2026-06-24T08:30:00.000Z'),
-    updatedAt: new Date('2026-06-24T08:30:00.000Z'),
-    creatorId: null,
-    flashCards: [],
-    ...overrides,
-  }) as FlashCardGroup;
+const buildGroup = (
+  overrides: Partial<FlashCardGroup> = {},
+): FlashCardGroup => ({
+  id: 1,
+  name: 'Phrasal Verbs',
+  createdAt: new Date('2026-06-24T08:30:00.000Z'),
+  updatedAt: new Date('2026-06-24T08:30:00.000Z'),
+  creatorId: null,
+  flashCards: [],
+  ...overrides,
+});
 
 describe('FlashCardGroupService', () => {
   let service: FlashCardGroupService;
@@ -162,7 +162,10 @@ describe('FlashCardGroupService', () => {
 
       const result = await service.update(1, { name: 'Novo nome' });
 
-      expect(repository.preload).toHaveBeenCalledWith({ id: 1, name: 'Novo nome' });
+      expect(repository.preload).toHaveBeenCalledWith({
+        id: 1,
+        name: 'Novo nome',
+      });
       expect(result.flashCardsCount).toBe(1);
     });
 
@@ -208,7 +211,9 @@ describe('FlashCardGroupService', () => {
 
   describe('absorb', () => {
     // Manager fake que roda o callback da transação.
-    const buildManager = (overrides: Partial<Record<string, jest.Mock>> = {}) => ({
+    const buildManager = (
+      overrides: Partial<Record<string, jest.Mock>> = {},
+    ) => ({
       countBy: jest.fn().mockResolvedValue(1),
       update: jest.fn().mockResolvedValue({ affected: 2 }),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -221,7 +226,9 @@ describe('FlashCardGroupService', () => {
         (cb: (m: unknown) => unknown) => cb(manager),
       );
       repository.findOne!.mockResolvedValue(
-        buildGroup({ flashCards: [buildCard({ id: 1 }), buildCard({ id: 2 })] }),
+        buildGroup({
+          flashCards: [buildCard({ id: 1 }), buildCard({ id: 2 })],
+        }),
       );
 
       const result = await service.absorb(1, 2);
