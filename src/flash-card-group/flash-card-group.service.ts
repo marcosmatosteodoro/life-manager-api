@@ -45,8 +45,12 @@ export class FlashCardGroupService {
   }
 
   /**
-   * Absorve o grupo `sourceId` no grupo `targetId`: move todos os flashcards
-   * do grupo de origem para o destino e exclui o grupo de origem.
+   * Absorve o grupo `sourceId` no grupo `targetId`: move os flashcards do grupo
+   * de origem para o destino e exclui o grupo de origem.
+   *
+   * Termos que já existem nos dois grupos (comparação case-insensitive) são
+   * mesclados: mantém-se o card mais antigo (menor createdAt) e somam-se
+   * correctAnswers, wrongAnswers e score; lastReview vira o mais recente.
    *
    * Tudo numa única transação — se qualquer passo falhar, nada é alterado
    * (não fica flashcard órfão nem grupo excluído pela metade).
@@ -76,18 +80,78 @@ export class FlashCardGroupService {
         );
       }
 
-      // Move os flashcards do grupo de origem para o destino.
-      await manager.update(
-        FlashCard,
-        { flashCardGroupId: sourceId },
-        { flashCardGroupId: targetId },
-      );
+      // Carrega os cards dos dois grupos para mesclar termos duplicados.
+      const [targetCards, sourceCards] = await Promise.all([
+        manager.find(FlashCard, { where: { flashCardGroupId: targetId } }),
+        manager.find(FlashCard, { where: { flashCardGroupId: sourceId } }),
+      ]);
+
+      // Indexa os cards do destino por termo normalizado (case-insensitive).
+      const byTerm = new Map<string, FlashCard>();
+      for (const card of targetCards) {
+        byTerm.set(this.normalizeTerm(card.term), card);
+      }
+
+      const toSave: FlashCard[] = [];
+      const toDelete: number[] = [];
+
+      for (const sourceCard of sourceCards) {
+        const key = this.normalizeTerm(sourceCard.term);
+        const existing = byTerm.get(key);
+
+        if (!existing) {
+          // Termo inédito no destino: apenas move o card.
+          sourceCard.flashCardGroupId = targetId;
+          byTerm.set(key, sourceCard); // mescla também duplicatas da própria origem
+          toSave.push(sourceCard);
+          continue;
+        }
+
+        // Termo já existe: mantém o mais antigo e soma os contadores.
+        const older =
+          sourceCard.createdAt <= existing.createdAt ? sourceCard : existing;
+        const newer = older === sourceCard ? existing : sourceCard;
+
+        older.correctAnswers =
+          sourceCard.correctAnswers + existing.correctAnswers;
+        older.wrongAnswers = sourceCard.wrongAnswers + existing.wrongAnswers;
+        older.score = sourceCard.score + existing.score;
+        older.lastReview = this.latestReview(
+          sourceCard.lastReview,
+          existing.lastReview,
+        );
+        older.flashCardGroupId = targetId; // garante o mantido no destino
+
+        byTerm.set(key, older);
+        toSave.push(older);
+        toDelete.push(newer.id);
+      }
+
+      // Remove os duplicados perdedores antes de salvar os mantidos.
+      if (toDelete.length) {
+        await manager.delete(FlashCard, toDelete);
+      }
+      if (toSave.length) {
+        await manager.save(FlashCard, toSave);
+      }
       // Exclui o grupo de origem (já sem flashcards).
       await manager.delete(FlashCardGroup, sourceId);
     });
 
     // Após o commit, retorna o destino já com os flashcards mesclados.
     return this.findOne(targetId);
+  }
+
+  /** Normaliza o termo para comparação (case-insensitive, sem espaços nas pontas). */
+  private normalizeTerm(term: string): string {
+    return term.trim().toLowerCase();
+  }
+
+  /** Data de revisão mais recente entre duas (YYYY-MM-DD lexicográfico) ou null. */
+  private latestReview(a: string | null, b: string | null): string | null {
+    if (!a) return b;
+    if (!b) return a;
+    return a >= b ? a : b;
   }
 
   async create(dto: CreateFlashCardGroupDto): Promise<FlashCardGroup> {

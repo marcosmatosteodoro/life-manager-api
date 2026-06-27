@@ -210,39 +210,93 @@ describe('FlashCardGroupService', () => {
   });
 
   describe('absorb', () => {
-    // Manager fake que roda o callback da transação.
+    // Manager fake que roda o callback da transação. find devolve, em ordem,
+    // os cards do destino e os da origem (mesma ordem do Promise.all).
     const buildManager = (
+      targetCards: FlashCard[] = [],
+      sourceCards: FlashCard[] = [],
       overrides: Partial<Record<string, jest.Mock>> = {},
     ) => ({
       countBy: jest.fn().mockResolvedValue(1),
-      update: jest.fn().mockResolvedValue({ affected: 2 }),
+      find: jest
+        .fn()
+        .mockResolvedValueOnce(targetCards)
+        .mockResolvedValueOnce(sourceCards),
+      save: jest.fn().mockResolvedValue([]),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       ...overrides,
     });
 
-    it('move os flashcards e exclui a origem dentro de uma transação', async () => {
-      const manager = buildManager();
+    it('move termos inéditos para o destino e exclui a origem', async () => {
+      const manager = buildManager(
+        [buildCard({ id: 1, term: 'alpha' })],
+        [buildCard({ id: 2, term: 'beta', flashCardGroupId: 2 })],
+      );
       repository.manager.transaction.mockImplementation(
         (cb: (m: unknown) => unknown) => cb(manager),
       );
       repository.findOne!.mockResolvedValue(
-        buildGroup({
-          flashCards: [buildCard({ id: 1 }), buildCard({ id: 2 })],
-        }),
+        buildGroup({ flashCards: [buildCard(), buildCard({ id: 2 })] }),
       );
 
       const result = await service.absorb(1, 2);
 
-      // origem (2) → destino (1)
-      expect(manager.update).toHaveBeenCalledWith(
+      // 'beta' não existe no destino: card movido, sem excluir flashcard.
+      expect(manager.save).toHaveBeenCalledWith(FlashCard, [
+        expect.objectContaining({ id: 2, flashCardGroupId: 1 }),
+      ]);
+      expect(manager.delete).not.toHaveBeenCalledWith(
         FlashCard,
-        { flashCardGroupId: 2 },
-        { flashCardGroupId: 1 },
+        expect.anything(),
       );
       expect(manager.delete).toHaveBeenCalledWith(FlashCardGroup, 2);
-      // Atualizar e excluir acontecem só após validar os dois grupos.
       expect(manager.countBy).toHaveBeenCalledTimes(2);
       expect(result.flashCardsCount).toBe(2);
+    });
+
+    it('mescla termo duplicado: mantém o mais antigo e soma os contadores', async () => {
+      const target = buildCard({
+        id: 1,
+        term: 'give up',
+        correctAnswers: 3,
+        wrongAnswers: 1,
+        score: 2,
+        lastReview: '2026-06-22',
+        createdAt: new Date('2026-06-20T08:00:00.000Z'),
+        flashCardGroupId: 1,
+      });
+      const source = buildCard({
+        id: 2,
+        term: 'Give Up', // mesma palavra, caixa diferente
+        correctAnswers: 5,
+        wrongAnswers: 0,
+        score: 5,
+        lastReview: '2026-06-24',
+        createdAt: new Date('2026-06-25T08:00:00.000Z'),
+        flashCardGroupId: 2,
+      });
+      const manager = buildManager([target], [source]);
+      repository.manager.transaction.mockImplementation(
+        (cb: (m: unknown) => unknown) => cb(manager),
+      );
+      repository.findOne!.mockResolvedValue(buildGroup({ flashCards: [target] }));
+
+      await service.absorb(1, 2);
+
+      // Mantém o card mais antigo (id 1) com contadores somados e revisão mais recente.
+      expect(manager.save).toHaveBeenCalledWith(FlashCard, [
+        expect.objectContaining({
+          id: 1,
+          correctAnswers: 8,
+          wrongAnswers: 1,
+          score: 7,
+          lastReview: '2026-06-24',
+          flashCardGroupId: 1,
+        }),
+      ]);
+      // Exclui o duplicado mais novo (id 2) e o grupo de origem.
+      expect(manager.delete).toHaveBeenCalledWith(FlashCard, [2]);
+      expect(manager.delete).toHaveBeenCalledWith(FlashCardGroup, 2);
     });
 
     it('lança BadRequest quando origem e destino são o mesmo grupo', async () => {
@@ -252,19 +306,21 @@ describe('FlashCardGroupService', () => {
     });
 
     it('lança NotFound quando o grupo destino não existe', async () => {
-      const manager = buildManager({ countBy: jest.fn().mockResolvedValue(0) });
+      const manager = buildManager([], [], {
+        countBy: jest.fn().mockResolvedValue(0),
+      });
       repository.manager.transaction.mockImplementation(
         (cb: (m: unknown) => unknown) => cb(manager),
       );
 
       await expect(service.absorb(99, 2)).rejects.toThrow(NotFoundException);
-      expect(manager.update).not.toHaveBeenCalled();
-      expect(manager.delete).not.toHaveBeenCalled();
+      expect(manager.find).not.toHaveBeenCalled();
+      expect(manager.save).not.toHaveBeenCalled();
     });
 
     it('lança NotFound quando o grupo de origem não existe', async () => {
       // destino existe (1ª chamada), origem não (2ª chamada)
-      const manager = buildManager({
+      const manager = buildManager([], [], {
         countBy: jest.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(0),
       });
       repository.manager.transaction.mockImplementation(
@@ -272,8 +328,8 @@ describe('FlashCardGroupService', () => {
       );
 
       await expect(service.absorb(1, 99)).rejects.toThrow(NotFoundException);
-      expect(manager.update).not.toHaveBeenCalled();
-      expect(manager.delete).not.toHaveBeenCalled();
+      expect(manager.find).not.toHaveBeenCalled();
+      expect(manager.save).not.toHaveBeenCalled();
     });
   });
 
