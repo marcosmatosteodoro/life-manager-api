@@ -13,6 +13,7 @@ import { DiaryModule } from './diary/diary.module';
 import { FlashCardGroupModule } from './flash-card-group/flash-card-group.module';
 import { FlashCardModule } from './flash-card/flash-card.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { FeedbackModule } from './feedback/feedback.module';
     FlashCardGroupModule,
     FlashCardModule,
     FeedbackModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
