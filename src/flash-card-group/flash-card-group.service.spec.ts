@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,15 +10,20 @@ type MockRepository<T extends object = object> = Partial<
   Record<keyof Repository<T>, jest.Mock>
 >;
 
-const createMockRepository = (): MockRepository<FlashCardGroup> => ({
-  create: jest.fn(),
-  save: jest.fn(),
-  findAndCount: jest.fn(),
-  findOne: jest.fn(),
-  preload: jest.fn(),
-  delete: jest.fn(),
-  countBy: jest.fn(),
-});
+// Manager transacional usado pelo método absorb.
+type ManagerMock = { transaction: jest.Mock };
+
+const createMockRepository = () =>
+  ({
+    create: jest.fn(),
+    save: jest.fn(),
+    findAndCount: jest.fn(),
+    findOne: jest.fn(),
+    preload: jest.fn(),
+    delete: jest.fn(),
+    countBy: jest.fn(),
+    manager: { transaction: jest.fn() },
+  }) as MockRepository<FlashCardGroup> & { manager: ManagerMock };
 
 // Query builder encadeável para o método review.
 const createQueryBuilderMock = () => {
@@ -61,7 +66,7 @@ const buildGroup = (overrides: Partial<FlashCardGroup> = {}): FlashCardGroup =>
 
 describe('FlashCardGroupService', () => {
   let service: FlashCardGroupService;
-  let repository: MockRepository<FlashCardGroup>;
+  let repository: MockRepository<FlashCardGroup> & { manager: ManagerMock };
   let qb: ReturnType<typeof createQueryBuilderMock>;
 
   beforeEach(async () => {
@@ -198,6 +203,70 @@ describe('FlashCardGroupService', () => {
     it('lança NotFoundException quando o grupo não existe', async () => {
       repository.countBy!.mockResolvedValue(0);
       await expect(service.review(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('absorb', () => {
+    // Manager fake que roda o callback da transação.
+    const buildManager = (overrides: Partial<Record<string, jest.Mock>> = {}) => ({
+      countBy: jest.fn().mockResolvedValue(1),
+      update: jest.fn().mockResolvedValue({ affected: 2 }),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      ...overrides,
+    });
+
+    it('move os flashcards e exclui a origem dentro de uma transação', async () => {
+      const manager = buildManager();
+      repository.manager.transaction.mockImplementation(
+        (cb: (m: unknown) => unknown) => cb(manager),
+      );
+      repository.findOne!.mockResolvedValue(
+        buildGroup({ flashCards: [buildCard({ id: 1 }), buildCard({ id: 2 })] }),
+      );
+
+      const result = await service.absorb(1, 2);
+
+      // origem (2) → destino (1)
+      expect(manager.update).toHaveBeenCalledWith(
+        FlashCard,
+        { flashCardGroupId: 2 },
+        { flashCardGroupId: 1 },
+      );
+      expect(manager.delete).toHaveBeenCalledWith(FlashCardGroup, 2);
+      // Atualizar e excluir acontecem só após validar os dois grupos.
+      expect(manager.countBy).toHaveBeenCalledTimes(2);
+      expect(result.flashCardsCount).toBe(2);
+    });
+
+    it('lança BadRequest quando origem e destino são o mesmo grupo', async () => {
+      await expect(service.absorb(1, 1)).rejects.toThrow(BadRequestException);
+      // Nem chega a abrir transação.
+      expect(repository.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it('lança NotFound quando o grupo destino não existe', async () => {
+      const manager = buildManager({ countBy: jest.fn().mockResolvedValue(0) });
+      repository.manager.transaction.mockImplementation(
+        (cb: (m: unknown) => unknown) => cb(manager),
+      );
+
+      await expect(service.absorb(99, 2)).rejects.toThrow(NotFoundException);
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(manager.delete).not.toHaveBeenCalled();
+    });
+
+    it('lança NotFound quando o grupo de origem não existe', async () => {
+      // destino existe (1ª chamada), origem não (2ª chamada)
+      const manager = buildManager({
+        countBy: jest.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(0),
+      });
+      repository.manager.transaction.mockImplementation(
+        (cb: (m: unknown) => unknown) => cb(manager),
+      );
+
+      await expect(service.absorb(1, 99)).rejects.toThrow(NotFoundException);
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(manager.delete).not.toHaveBeenCalled();
     });
   });
 

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
@@ -38,6 +42,52 @@ export class FlashCardGroupService {
       .addOrderBy('RANDOM()')
       .getMany();
     return cards.map(attachTotalReviews);
+  }
+
+  /**
+   * Absorve o grupo `sourceId` no grupo `targetId`: move todos os flashcards
+   * do grupo de origem para o destino e exclui o grupo de origem.
+   *
+   * Tudo numa única transação — se qualquer passo falhar, nada é alterado
+   * (não fica flashcard órfão nem grupo excluído pela metade).
+   */
+  async absorb(targetId: number, sourceId: number): Promise<FlashCardGroup> {
+    if (targetId === sourceId) {
+      throw new BadRequestException(
+        'Não é possível absorver um grupo nele mesmo',
+      );
+    }
+
+    await this.groupRepository.manager.transaction(async (manager) => {
+      const targetExists = await manager.countBy(FlashCardGroup, {
+        id: targetId,
+      });
+      if (!targetExists) {
+        throw new NotFoundException(
+          `FlashCardGroup #${targetId} não encontrado`,
+        );
+      }
+      const sourceExists = await manager.countBy(FlashCardGroup, {
+        id: sourceId,
+      });
+      if (!sourceExists) {
+        throw new NotFoundException(
+          `FlashCardGroup #${sourceId} não encontrado`,
+        );
+      }
+
+      // Move os flashcards do grupo de origem para o destino.
+      await manager.update(
+        FlashCard,
+        { flashCardGroupId: sourceId },
+        { flashCardGroupId: targetId },
+      );
+      // Exclui o grupo de origem (já sem flashcards).
+      await manager.delete(FlashCardGroup, sourceId);
+    });
+
+    // Após o commit, retorna o destino já com os flashcards mesclados.
+    return this.findOne(targetId);
   }
 
   async create(dto: CreateFlashCardGroupDto): Promise<FlashCardGroup> {

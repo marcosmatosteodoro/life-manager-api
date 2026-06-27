@@ -11,6 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -18,6 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
+import { AbsorbFlashCardGroupDto } from './dto/absorb-flash-card-group.dto';
 import { CreateFlashCardGroupDto } from './dto/create-flash-card-group.dto';
 import { FlashCardGroupListResponseDto } from './dto/flash-card-group-list-response.dto';
 import { UpdateFlashCardGroupDto } from './dto/update-flash-card-group.dto';
@@ -41,6 +43,21 @@ export class FlashCardGroupController {
   @ApiOkResponse({ type: FlashCardGroupListResponseDto })
   findAll() {
     return this.service.findAll();
+  }
+
+  @Post(':id/absorb')
+  @ApiOperation({
+    summary:
+      'Absorve outro grupo: move os flashcards dele para este e o exclui',
+  })
+  @ApiOkResponse({ type: FlashCardGroup })
+  @ApiBadRequestResponse({ description: 'Origem e destino são o mesmo grupo' })
+  @ApiNotFoundResponse({ description: 'Registro não encontrado' })
+  absorb(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AbsorbFlashCardGroupDto,
+  ) {
+    return this.service.absorb(id, dto.sourceId);
   }
 
   @Get(':id/review')
