@@ -32,6 +32,14 @@ export class Company {
   @Column({ name: 'country_id', type: 'int', nullable: false })
   countryId: number;
 
+  // observation text, null true — anotações livres sobre a empresa
+  @ApiProperty({
+    example: 'Processo seletivo longo; recrutadora: Maria',
+    nullable: true,
+  })
+  @Column({ type: 'text', nullable: true })
+  observation: string | null;
+
   // Relação com country; ON DELETE RESTRICT evita apagar país com empresas.
   @ApiProperty({ type: () => Country, required: false })
   @ManyToOne(() => Country, { onDelete: 'RESTRICT' })

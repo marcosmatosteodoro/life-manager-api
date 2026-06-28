@@ -42,6 +42,7 @@ const buildCompany = (overrides: Partial<Company> = {}): Company => ({
   name: 'Acme Corp',
   website: 'https://acme.com',
   countryId: 1,
+  observation: null,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,

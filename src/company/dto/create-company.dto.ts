@@ -26,6 +26,15 @@ export class CreateCompanyDto {
   @IsPositive()
   countryId: number;
 
+  // observation — anotações livres, opcional.
+  @ApiPropertyOptional({
+    example: 'Processo seletivo longo; recrutadora: Maria',
+    description: 'Anotações livres sobre a empresa',
+  })
+  @IsOptional()
+  @IsString()
+  observation?: string;
+
   // creatorId opcional enquanto não há autenticação.
   @ApiPropertyOptional({
     example: 1,
