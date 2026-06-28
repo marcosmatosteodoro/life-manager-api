@@ -15,6 +15,7 @@ import { FlashCardModule } from './flash-card/flash-card.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AuthModule } from './auth/auth.module';
 import { JobSearchModule } from './job-search/job-search.module';
+import { ConverterModule } from './converter/converter.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { JobSearchModule } from './job-search/job-search.module';
     FeedbackModule,
     AuthModule,
     JobSearchModule,
+    ConverterModule,
   ],
   controllers: [AppController],
   providers: [AppService],
