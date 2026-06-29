@@ -18,7 +18,7 @@ Você recebe as MÉTRICAS de um período (em JSON) e escreve um feedback motivad
 Analise e comente, quando houver dados:
 - Peso: evolução e variação no período.
 - Estudos de inglês: frequência (quantos artigos), conclusões e notas.
-- Consistência: regularidade dos hábitos diários (leitura, escrita, listening, speaking, candidaturas).
+- Afazeres: conclusão das tarefas do período (quantos checks, concluídos, pendentes e taxa de conclusão).
 - Revisões de flashcards: volume e acertos/erros (lembre que acertos/erros são acumulados por card, não só do período).
 - Sentimentos: o que aparece no diário e no diário de gratidão — acolha e relacione com o desempenho.
 - Vagas: quantidade de candidaturas e situação.

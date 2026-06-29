@@ -11,7 +11,7 @@ import { AiService } from '../ai/ai.service';
 import { Apply } from '../apply/entities/apply.entity';
 import { Article } from '../article/entities/article.entity';
 import { ArticleStatus } from '../article/enums/article-status.enum';
-import { DailyCheck } from '../daily-check/entities/daily-check.entity';
+import { TodoCheck } from '../todo/entities/todo-check.entity';
 import { Diary } from '../diary/entities/diary.entity';
 import { DiaryType } from '../diary/enums/diary-type.enum';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
@@ -35,8 +35,8 @@ export class FeedbackService {
     private readonly weightRepository: Repository<Weight>,
     @InjectRepository(Article)
     private readonly articleRepository: Repository<Article>,
-    @InjectRepository(DailyCheck)
-    private readonly dailyCheckRepository: Repository<DailyCheck>,
+    @InjectRepository(TodoCheck)
+    private readonly todoCheckRepository: Repository<TodoCheck>,
     @InjectRepository(FlashCard)
     private readonly flashCardRepository: Repository<FlashCard>,
     @InjectRepository(Diary)
@@ -108,7 +108,7 @@ export class FeedbackService {
     const whereDate = <T>(field: keyof T) =>
       (dateGte ? { [field]: dateGte } : {}) as FindOptionsWhere<T>;
 
-    const [weights, articles, dailyChecks, flashCards, diaries, applies] =
+    const [weights, articles, todoChecks, flashCards, diaries, applies] =
       await Promise.all([
         this.weightRepository.find({
           where: whereDate<Weight>('date'),
@@ -117,8 +117,8 @@ export class FeedbackService {
         this.articleRepository.find({
           where: createdGte ? { createdAt: createdGte } : {},
         }),
-        this.dailyCheckRepository.find({
-          where: whereDate<DailyCheck>('date'),
+        this.todoCheckRepository.find({
+          where: whereDate<TodoCheck>('date'),
         }),
         this.flashCardRepository.find({
           // Só cards revisados; com período, apenas os revisados nele.
@@ -160,13 +160,16 @@ export class FeedbackService {
           ? this.round(scores.reduce((s, n) => s + n, 0) / scores.length)
           : null,
       },
-      consistencia: {
-        diasComRegistro: dailyChecks.length,
-        leitura: dailyChecks.filter((d) => d.readingSkills).length,
-        escrita: dailyChecks.filter((d) => d.writingSkills).length,
-        listening: dailyChecks.filter((d) => d.listeningSkills).length,
-        speaking: dailyChecks.filter((d) => d.speakingSkills).length,
-        candidaturas: dailyChecks.filter((d) => d.applyJobs).length,
+      afazeres: {
+        checksNoPeriodo: todoChecks.length,
+        concluidos: todoChecks.filter((c) => c.checked).length,
+        pendentes: todoChecks.filter((c) => !c.checked).length,
+        taxaConclusaoPct: todoChecks.length
+          ? this.round(
+              (todoChecks.filter((c) => c.checked).length / todoChecks.length) *
+                100,
+            )
+          : null,
       },
       revisoesFlashcards: {
         cardsRevisadosNoPeriodo: flashCards.length,

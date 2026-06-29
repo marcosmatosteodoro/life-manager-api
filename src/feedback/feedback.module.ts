@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiModule } from '../ai/ai.module';
 import { Apply } from '../apply/entities/apply.entity';
 import { Article } from '../article/entities/article.entity';
-import { DailyCheck } from '../daily-check/entities/daily-check.entity';
+import { TodoCheck } from '../todo/entities/todo-check.entity';
 import { Diary } from '../diary/entities/diary.entity';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { Weight } from '../weight/entities/weight.entity';
@@ -18,7 +18,7 @@ import { FeedbackService } from './feedback.service';
       Feedback,
       Weight,
       Article,
-      DailyCheck,
+      TodoCheck,
       FlashCard,
       Diary,
       Apply,

@@ -5,7 +5,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WeightModule } from './weight/weight.module';
 import { ArticleModule } from './article/article.module';
-import { DailyCheckModule } from './daily-check/daily-check.module';
 import { CountryModule } from './country/country.module';
 import { CompanyModule } from './company/company.module';
 import { ApplyModule } from './apply/apply.module';
@@ -16,6 +15,7 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { AuthModule } from './auth/auth.module';
 import { JobSearchModule } from './job-search/job-search.module';
 import { ConverterModule } from './converter/converter.module';
+import { TodoModule } from './todo/todo.module';
 
 @Module({
   imports: [
@@ -44,7 +44,6 @@ import { ConverterModule } from './converter/converter.module';
     }),
     WeightModule,
     ArticleModule,
-    DailyCheckModule,
     CountryModule,
     CompanyModule,
     ApplyModule,
@@ -55,6 +54,7 @@ import { ConverterModule } from './converter/converter.module';
     AuthModule,
     JobSearchModule,
     ConverterModule,
+    TodoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

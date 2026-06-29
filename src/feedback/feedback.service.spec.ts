@@ -6,7 +6,7 @@ import { Apply } from '../apply/entities/apply.entity';
 import { ApplyStatus } from '../apply/enums/apply-status.enum';
 import { Article } from '../article/entities/article.entity';
 import { ArticleStatus } from '../article/enums/article-status.enum';
-import { DailyCheck } from '../daily-check/entities/daily-check.entity';
+import { TodoCheck } from '../todo/entities/todo-check.entity';
 import { Diary } from '../diary/entities/diary.entity';
 import { DiaryType } from '../diary/enums/diary-type.enum';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
@@ -28,7 +28,7 @@ describe('FeedbackService', () => {
   let feedbackRepo: ReturnType<typeof repoMock>;
   let weightRepo: ReturnType<typeof repoMock>;
   let articleRepo: ReturnType<typeof repoMock>;
-  let dailyCheckRepo: ReturnType<typeof repoMock>;
+  let todoCheckRepo: ReturnType<typeof repoMock>;
   let flashCardRepo: ReturnType<typeof repoMock>;
   let diaryRepo: ReturnType<typeof repoMock>;
   let applyRepo: ReturnType<typeof repoMock>;
@@ -38,7 +38,7 @@ describe('FeedbackService', () => {
     feedbackRepo = repoMock();
     weightRepo = repoMock();
     articleRepo = repoMock();
-    dailyCheckRepo = repoMock();
+    todoCheckRepo = repoMock();
     flashCardRepo = repoMock();
     diaryRepo = repoMock();
     applyRepo = repoMock();
@@ -58,7 +58,7 @@ describe('FeedbackService', () => {
         { provide: getRepositoryToken(Feedback), useValue: feedbackRepo },
         { provide: getRepositoryToken(Weight), useValue: weightRepo },
         { provide: getRepositoryToken(Article), useValue: articleRepo },
-        { provide: getRepositoryToken(DailyCheck), useValue: dailyCheckRepo },
+        { provide: getRepositoryToken(TodoCheck), useValue: todoCheckRepo },
         { provide: getRepositoryToken(FlashCard), useValue: flashCardRepo },
         { provide: getRepositoryToken(Diary), useValue: diaryRepo },
         { provide: getRepositoryToken(Apply), useValue: applyRepo },
@@ -85,14 +85,10 @@ describe('FeedbackService', () => {
         { status: ArticleStatus.COMPLETED, score: 8 },
         { status: ArticleStatus.SUMMARY_IN_PROGRESS, score: null },
       ]);
-      dailyCheckRepo.find.mockResolvedValue([
-        {
-          readingSkills: true,
-          writingSkills: false,
-          listeningSkills: true,
-          speakingSkills: false,
-          applyJobs: true,
-        },
+      todoCheckRepo.find.mockResolvedValue([
+        { checked: true },
+        { checked: true },
+        { checked: false },
       ]);
       flashCardRepo.find.mockResolvedValue([
         { correctAnswers: 5, wrongAnswers: 2 },
@@ -121,12 +117,13 @@ describe('FeedbackService', () => {
       const data = JSON.parse(result.inputData) as {
         peso: { variacao: number | null };
         estudoIngles: { notaMedia: number | null };
-        consistencia: { leitura: number };
+        afazeres: { concluidos: number; pendentes: number };
         vagas: { total: number };
       };
       expect(data.peso.variacao).toBe(-1.5);
       expect(data.estudoIngles.notaMedia).toBe(8);
-      expect(data.consistencia.leitura).toBe(1);
+      expect(data.afazeres.concluidos).toBe(2);
+      expect(data.afazeres.pendentes).toBe(1);
       expect(data.vagas.total).toBe(1);
       expect(result.id).toBe(1);
     });
