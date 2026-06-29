@@ -34,6 +34,7 @@ describe('FlashCardController', () => {
       remove: jest.fn(),
       review: jest.fn(),
       reviewBatch: jest.fn(),
+      reviewBlock: jest.fn(),
       translate: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
@@ -96,6 +97,14 @@ describe('FlashCardController', () => {
     const items = [{ id: 1, correctAnswers: true }];
     await expect(controller.reviewBatch(items)).resolves.toEqual(cards);
     expect(service.reviewBatch).toHaveBeenCalledWith(items);
+  });
+
+  it('reviewBlock repassa o array', async () => {
+    const cards = [buildCard()];
+    service.reviewBlock.mockResolvedValue(cards);
+    const items = [{ id: 1, correctAnswers: 1, wrongAnswers: 2 }];
+    await expect(controller.reviewBlock(items)).resolves.toEqual(cards);
+    expect(service.reviewBlock).toHaveBeenCalledWith(items);
   });
 
   it('translate repassa o id', async () => {

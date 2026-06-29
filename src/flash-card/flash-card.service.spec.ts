@@ -257,6 +257,42 @@ describe('FlashCardService', () => {
     });
   });
 
+  describe('reviewBlock', () => {
+    it('soma acertos/erros por key e seta lastReview', async () => {
+      const cards = [
+        buildCard({ id: 1, correctAnswers: 0, wrongAnswers: 0, score: 0 }),
+        buildCard({ id: 2, correctAnswers: 1, wrongAnswers: 0, score: 1 }),
+      ];
+      cardRepo.find!.mockResolvedValue(cards);
+      cardRepo.save!.mockImplementation((c) =>
+        Promise.resolve(c as FlashCard[]),
+      );
+
+      const result = await service.reviewBlock([
+        { id: 1, correctAnswers: 1, wrongAnswers: 2 },
+        { id: 2, correctAnswers: 1, wrongAnswers: 0 },
+      ]);
+
+      expect(result[0].correctAnswers).toBe(1);
+      expect(result[0].wrongAnswers).toBe(2);
+      expect(result[0].score).toBe(-1);
+      expect(result[0].lastReview).not.toBeNull();
+      expect(result[1].correctAnswers).toBe(2);
+      expect(result[1].score).toBe(2);
+    });
+
+    it('lança NotFoundException quando algum id não existe', async () => {
+      cardRepo.find!.mockResolvedValue([buildCard({ id: 1 })]);
+      await expect(
+        service.reviewBlock([
+          { id: 1, correctAnswers: 1, wrongAnswers: 0 },
+          { id: 2, correctAnswers: 1, wrongAnswers: 0 },
+        ]),
+      ).rejects.toThrow(NotFoundException);
+      expect(cardRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('remove', () => {
     it('remove quando existe', async () => {
       cardRepo.delete!.mockResolvedValue({ affected: 1, raw: [] });

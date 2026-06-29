@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
+import { BlockReviewItemDto } from './dto/block-review-flash-card.dto';
 import { CreateFlashCardDto } from './dto/create-flash-card.dto';
 import { FlashCardListResponseDto } from './dto/flash-card-list-response.dto';
 import { ReviewFlashCardItemDto } from './dto/review-flash-card.dto';
@@ -102,6 +103,36 @@ export class FlashCardService {
     const byId = new Map(cards.map((c) => [c.id, c]));
     for (const item of items) {
       this.applyReview(byId.get(item.id)!, item.correctAnswers);
+    }
+    const saved = await this.flashCardRepository.save(cards);
+    return saved.map(attachTotalReviews);
+  }
+
+  /**
+   * Review em bloco (ex.: modo combinação): um item por flashcard (ids únicos),
+   * somando as contagens de acertos/erros da rodada de uma vez. Compartilha a
+   * mesma regra de score do review unitário (acerto +1, erro -1).
+   */
+  async reviewBlock(items: BlockReviewItemDto[]): Promise<FlashCard[]> {
+    const ids = items.map((i) => i.id);
+    const cards = await this.flashCardRepository.find({
+      where: { id: In(ids) },
+    });
+    if (cards.length !== ids.length) {
+      const found = new Set(cards.map((c) => c.id));
+      const missing = ids.filter((id) => !found.has(id));
+      throw new NotFoundException(
+        `FlashCard(s) não encontrado(s): ${missing.join(', ')}`,
+      );
+    }
+    const byId = new Map(cards.map((c) => [c.id, c]));
+    const today = this.today();
+    for (const item of items) {
+      const card = byId.get(item.id)!;
+      card.correctAnswers += item.correctAnswers;
+      card.wrongAnswers += item.wrongAnswers;
+      card.score += item.correctAnswers - item.wrongAnswers;
+      card.lastReview = today;
     }
     const saved = await this.flashCardRepository.save(cards);
     return saved.map(attachTotalReviews);

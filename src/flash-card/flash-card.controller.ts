@@ -19,6 +19,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { BlockReviewItemDto } from './dto/block-review-flash-card.dto';
 import { CreateFlashCardDto } from './dto/create-flash-card.dto';
 import { FlashCardListResponseDto } from './dto/flash-card-list-response.dto';
 import {
@@ -61,6 +62,20 @@ export class FlashCardController {
     items: ReviewFlashCardItemDto[],
   ) {
     return this.service.reviewBatch(items);
+  }
+
+  // Estática — precisa vir antes de ':id'.
+  @Patch('reviews/block')
+  @ApiOperation({
+    summary: 'Review em bloco (modo combinação): contagens por key, ids únicos',
+  })
+  @ApiBody({ type: [BlockReviewItemDto] })
+  @ApiOkResponse({ type: FlashCard, isArray: true })
+  reviewBlock(
+    @Body(new ParseArrayPipe({ items: BlockReviewItemDto }))
+    items: BlockReviewItemDto[],
+  ) {
+    return this.service.reviewBlock(items);
   }
 
   @Patch(':id/review')
