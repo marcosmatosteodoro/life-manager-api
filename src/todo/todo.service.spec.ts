@@ -12,6 +12,7 @@ type MockRepository<T extends object = object> = Partial<
 const createMockRepository = <T extends object>(): MockRepository<T> => ({
   create: jest.fn(),
   save: jest.fn(),
+  find: jest.fn(),
   findAndCount: jest.fn(),
   findOne: jest.fn(),
   preload: jest.fn(),
@@ -82,6 +83,17 @@ describe('TodoService', () => {
   it('findOne lança NotFoundException quando não encontrado', async () => {
     repo.findOne!.mockResolvedValue(null);
     await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+  });
+
+  it('tags retorna distintas, sem nulos, ordenadas', async () => {
+    repo.find!.mockResolvedValue([
+      buildTodo({ tag: 'saúde' }),
+      buildTodo({ tag: 'estudo' }),
+      buildTodo({ tag: 'saúde' }),
+      buildTodo({ tag: null }),
+    ]);
+    const result = await service.tags();
+    expect(result).toEqual(['estudo', 'saúde']);
   });
 
   it('update lança NotFoundException quando o id não existe', async () => {

@@ -28,6 +28,7 @@ describe('TodoController', () => {
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      tags: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TodoController],
@@ -53,6 +54,12 @@ describe('TodoController', () => {
     service.findOne.mockResolvedValue(todo);
     await expect(controller.findOne(1)).resolves.toEqual(todo);
     expect(service.findOne).toHaveBeenCalledWith(1);
+  });
+
+  it('tags delega para o service', async () => {
+    service.tags.mockResolvedValue(['estudo', 'saúde']);
+    await expect(controller.tags()).resolves.toEqual(['estudo', 'saúde']);
+    expect(service.tags).toHaveBeenCalled();
   });
 
   it('remove repassa o id', async () => {

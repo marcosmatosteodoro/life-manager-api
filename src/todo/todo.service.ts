@@ -25,6 +25,17 @@ export class TodoService {
     return { count, rows };
   }
 
+  /** Lista as tags distintas já usadas (não-nulas), em ordem alfabética. */
+  async tags(): Promise<string[]> {
+    const rows = await this.todoRepository.find({ select: { tag: true } });
+    const set = new Set<string>();
+    for (const r of rows) {
+      const tag = r.tag?.trim();
+      if (tag) set.add(tag);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }
+
   async findOne(id: number): Promise<Todo> {
     const todo = await this.todoRepository.findOne({ where: { id } });
     if (!todo) {

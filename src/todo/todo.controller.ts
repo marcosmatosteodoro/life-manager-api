@@ -42,6 +42,14 @@ export class TodoController {
     return this.todoService.findAll();
   }
 
+  // Estática — precisa vir antes de ':id' para não colidir com o ParseIntPipe.
+  @Get('tags')
+  @ApiOperation({ summary: 'Lista as tags distintas já usadas' })
+  @ApiOkResponse({ type: String, isArray: true })
+  tags() {
+    return this.todoService.tags();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Busca um afazer por id' })
   @ApiOkResponse({ type: Todo })
