@@ -45,6 +45,27 @@ export class FlashCardGroupService {
   }
 
   /**
+   * Flashcards do grupo para o modo bloco (combinação): ordem totalmente
+   * aleatória (`RANDOM()`), sem priorizar score nem lastReview. Diferente do
+   * `review` (spaced repetition, que sempre coloca os mesmos cards difíceis na
+   * frente), aqui cada partida sorteia um subconjunto diferente do grupo — dá
+   * variedade e evita repetir sempre os mesmos termos. RANDOM() é sintaxe
+   * Postgres (banco padrão do app).
+   */
+  async reviewBlock(id: number): Promise<FlashCard[]> {
+    const exists = await this.groupRepository.countBy({ id });
+    if (!exists) {
+      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+    }
+    const cards = await this.flashCardRepository
+      .createQueryBuilder('card')
+      .where('card.flashCardGroupId = :id', { id })
+      .orderBy('RANDOM()')
+      .getMany();
+    return cards.map(attachTotalReviews);
+  }
+
+  /**
    * Absorve o grupo `sourceId` no grupo `targetId`: move os flashcards do grupo
    * de origem para o destino e exclui o grupo de origem.
    *

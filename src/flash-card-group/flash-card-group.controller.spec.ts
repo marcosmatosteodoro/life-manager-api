@@ -28,6 +28,7 @@ describe('FlashCardGroupController', () => {
       update: jest.fn(),
       remove: jest.fn(),
       review: jest.fn(),
+      reviewBlock: jest.fn(),
       absorb: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
@@ -86,6 +87,12 @@ describe('FlashCardGroupController', () => {
     service.review.mockResolvedValue([]);
     await expect(controller.review(1)).resolves.toEqual([]);
     expect(service.review).toHaveBeenCalledWith(1);
+  });
+
+  it('reviewBlock repassa o id para o service', async () => {
+    service.reviewBlock.mockResolvedValue([]);
+    await expect(controller.reviewBlock(1)).resolves.toEqual([]);
+    expect(service.reviewBlock).toHaveBeenCalledWith(1);
   });
 
   it('absorb repassa o id do destino e o sourceId', async () => {

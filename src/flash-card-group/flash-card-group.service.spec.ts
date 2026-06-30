@@ -210,6 +210,34 @@ describe('FlashCardGroupService', () => {
     });
   });
 
+  describe('reviewBlock', () => {
+    it('ordena só por RANDOM() (sem score/lastReview) e anexa totalReviews', async () => {
+      repository.countBy!.mockResolvedValue(1);
+      qb.getMany.mockResolvedValue([
+        buildCard({ id: 1, correctAnswers: 1, wrongAnswers: 2 }),
+      ]);
+
+      const result = await service.reviewBlock(1);
+
+      expect(qb.where).toHaveBeenCalledWith('card.flashCardGroupId = :id', {
+        id: 1,
+      });
+      // Aleatório puro: não prioriza dificuldade nem revisão antiga.
+      expect(qb.orderBy).toHaveBeenCalledWith('RANDOM()');
+      expect(qb.orderBy).not.toHaveBeenCalledWith(
+        'CASE WHEN card.score < 0 THEN 0 ELSE 1 END',
+        'ASC',
+      );
+      expect(qb.addOrderBy).not.toHaveBeenCalled();
+      expect(result[0].totalReviews).toBe(3);
+    });
+
+    it('lança NotFoundException quando o grupo não existe', async () => {
+      repository.countBy!.mockResolvedValue(0);
+      await expect(service.reviewBlock(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('absorb', () => {
     // Manager fake que roda o callback da transação. find devolve, em ordem,
     // os cards do destino e os da origem (mesma ordem do Promise.all).

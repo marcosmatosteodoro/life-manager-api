@@ -60,6 +60,16 @@ export class FlashCardGroupController {
     return this.service.absorb(id, dto.sourceId);
   }
 
+  @Get(':id/review/block')
+  @ApiOperation({
+    summary: 'Flashcards do grupo em ordem aleatória (modo bloco/combinação)',
+  })
+  @ApiOkResponse({ type: FlashCard, isArray: true })
+  @ApiNotFoundResponse({ description: 'Registro não encontrado' })
+  reviewBlock(@Param('id', ParseIntPipe) id: number) {
+    return this.service.reviewBlock(id);
+  }
+
   @Get(':id/review')
   @ApiOperation({
     summary: 'Flashcards do grupo ordenados para revisão',
