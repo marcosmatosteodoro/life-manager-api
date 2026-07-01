@@ -9,6 +9,7 @@ import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { attachTotalReviews } from '../flash-card/flash-card.util';
 import { CreateFlashCardGroupDto } from './dto/create-flash-card-group.dto';
 import { FlashCardGroupListResponseDto } from './dto/flash-card-group-list-response.dto';
+import { QuizQuestionDto } from './dto/quiz-question.dto';
 import { UpdateFlashCardGroupDto } from './dto/update-flash-card-group.dto';
 import { FlashCardGroup } from './entities/flash-card-group.entity';
 
@@ -63,6 +64,60 @@ export class FlashCardGroupService {
       .orderBy('RANDOM()')
       .getMany();
     return cards.map(attachTotalReviews);
+  }
+
+  /**
+   * Modo avaliação (quiz): para cada card com `value`, monta uma pergunta com o
+   * termo e 4 opções embaralhadas — a correta + até 3 distratores (values de
+   * outros cards do grupo). Mesma ordem do `review` (difíceis/antigos primeiro).
+   * Cards sem `value` não viram pergunta. Salvar continua pelo review unitário.
+   */
+  async reviewQuiz(id: number): Promise<QuizQuestionDto[]> {
+    const exists = await this.groupRepository.countBy({ id });
+    if (!exists) {
+      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+    }
+    const cards = await this.flashCardRepository
+      .createQueryBuilder('card')
+      .where('card.flashCardGroupId = :id', { id })
+      .orderBy('CASE WHEN card.score < 0 THEN 0 ELSE 1 END', 'ASC')
+      .addOrderBy('card.lastReview', 'ASC', 'NULLS FIRST')
+      .addOrderBy('RANDOM()')
+      .getMany();
+
+    const withValue = cards.filter((c) => c.value && c.value.trim());
+    const pool = [...new Set(withValue.map((c) => c.value!.trim()))];
+
+    return withValue.map((card) => {
+      const correct = card.value!.trim();
+      const distractors = this.pickDistractors(pool, correct, 3);
+      return {
+        id: card.id,
+        term: card.term,
+        value: correct,
+        options: this.shuffle([correct, ...distractors]),
+      };
+    });
+  }
+
+  /** Sorteia até `n` values distintos do pool, diferentes do correto. */
+  private pickDistractors(
+    pool: string[],
+    correct: string,
+    n: number,
+  ): string[] {
+    const candidates = this.shuffle(pool.filter((v) => v !== correct));
+    return candidates.slice(0, n);
+  }
+
+  /** Fisher-Yates (cópia). */
+  private shuffle<T>(arr: T[]): T[] {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
   }
 
   /**

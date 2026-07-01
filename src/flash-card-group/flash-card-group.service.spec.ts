@@ -238,6 +238,50 @@ describe('FlashCardGroupService', () => {
     });
   });
 
+  describe('reviewQuiz', () => {
+    it('monta perguntas com value correto + distratores (opções únicas)', async () => {
+      repository.countBy!.mockResolvedValue(1);
+      qb.getMany.mockResolvedValue([
+        buildCard({ id: 1, term: 'give up', value: 'desistir' }),
+        buildCard({ id: 2, term: 'increase', value: 'aumentar' }),
+        buildCard({ id: 3, term: 'postpone', value: 'adiar' }),
+        buildCard({ id: 4, term: 'gather', value: 'reunir' }),
+      ]);
+
+      const result = await service.reviewQuiz(1);
+
+      expect(result).toHaveLength(4);
+      const q1 = result.find((q) => q.id === 1)!;
+      expect(q1.term).toBe('give up');
+      expect(q1.value).toBe('desistir');
+      expect(q1.options).toContain('desistir'); // a correta está entre as opções
+      expect(q1.options).toHaveLength(4); // correta + 3 distratores
+      expect(new Set(q1.options).size).toBe(4); // sem repetição
+      expect(q1.options).not.toContain(undefined);
+    });
+
+    it('ignora cards sem value e limita distratores ao disponível', async () => {
+      repository.countBy!.mockResolvedValue(1);
+      qb.getMany.mockResolvedValue([
+        buildCard({ id: 1, term: 'a', value: 'um' }),
+        buildCard({ id: 2, term: 'b', value: 'dois' }),
+        buildCard({ id: 3, term: 'sem valor', value: null }),
+      ]);
+
+      const result = await service.reviewQuiz(1);
+
+      expect(result).toHaveLength(2); // o sem value não vira pergunta
+      const q = result[0];
+      expect(q.options).toContain(q.value);
+      expect(q.options.length).toBeLessThanOrEqual(2); // só há 2 values no pool
+    });
+
+    it('lança NotFoundException quando o grupo não existe', async () => {
+      repository.countBy!.mockResolvedValue(0);
+      await expect(service.reviewQuiz(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('absorb', () => {
     // Manager fake que roda o callback da transação. find devolve, em ordem,
     // os cards do destino e os da origem (mesma ordem do Promise.all).

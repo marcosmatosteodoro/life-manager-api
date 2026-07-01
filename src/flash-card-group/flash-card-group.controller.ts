@@ -22,6 +22,7 @@ import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { AbsorbFlashCardGroupDto } from './dto/absorb-flash-card-group.dto';
 import { CreateFlashCardGroupDto } from './dto/create-flash-card-group.dto';
 import { FlashCardGroupListResponseDto } from './dto/flash-card-group-list-response.dto';
+import { QuizQuestionDto } from './dto/quiz-question.dto';
 import { UpdateFlashCardGroupDto } from './dto/update-flash-card-group.dto';
 import { FlashCardGroup } from './entities/flash-card-group.entity';
 import { FlashCardGroupService } from './flash-card-group.service';
@@ -68,6 +69,16 @@ export class FlashCardGroupController {
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   reviewBlock(@Param('id', ParseIntPipe) id: number) {
     return this.service.reviewBlock(id);
+  }
+
+  @Get(':id/review/quiz')
+  @ApiOperation({
+    summary: 'Perguntas do modo avaliação (termo + 4 opções)',
+  })
+  @ApiOkResponse({ type: QuizQuestionDto, isArray: true })
+  @ApiNotFoundResponse({ description: 'Registro não encontrado' })
+  reviewQuiz(@Param('id', ParseIntPipe) id: number) {
+    return this.service.reviewQuiz(id);
   }
 
   @Get(':id/review')
