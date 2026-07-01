@@ -17,6 +17,7 @@ import { JobSearchModule } from './job-search/job-search.module';
 import { ConverterModule } from './converter/converter.module';
 import { TodoModule } from './todo/todo.module';
 import { UserModule } from './user/user.module';
+import { BacklogModule } from './backlog/backlog.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { UserModule } from './user/user.module';
     ConverterModule,
     TodoModule,
     UserModule,
+    BacklogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
