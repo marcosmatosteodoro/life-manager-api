@@ -16,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
 import { JobSearchModule } from './job-search/job-search.module';
 import { ConverterModule } from './converter/converter.module';
 import { TodoModule } from './todo/todo.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { TodoModule } from './todo/todo.module';
     JobSearchModule,
     ConverterModule,
     TodoModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

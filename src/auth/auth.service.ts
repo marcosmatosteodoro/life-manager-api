@@ -1,49 +1,44 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { timingSafeEqual } from 'crypto';
+import { UserService } from '../user/user.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { hashPassword, verifyPassword } from './password.util';
 
 /**
- * Autenticação simples de usuário único: credenciais vêm do ambiente
- * (AUTH_USERNAME/AUTH_PASSWORD) e o login devolve um JWT assinado.
- *
- * Stopgap para um único usuário. Quando houver multiusuário, migrar para
- * tabela de usuários com senha em hash (bcrypt/Argon2) — ver ProximosPassos.
+ * Autenticação contra a tabela `users` (senha em hash scrypt). O JWT carrega o
+ * `sub` = id do usuário. Substitui o antigo login por variáveis de ambiente.
  */
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly config: ConfigService,
     private readonly jwt: JwtService,
+    private readonly users: UserService,
   ) {}
 
-  async login(dto: LoginDto): Promise<{ accessToken: string }> {
-    const expectedUser = this.config.get<string>('AUTH_USERNAME');
-    const expectedPass = this.config.get<string>('AUTH_PASSWORD');
-
-    // Sem credenciais configuradas, ninguém entra (fail secure).
-    if (!expectedUser || !expectedPass) {
-      throw new UnauthorizedException('Autenticação não configurada.');
-    }
-
+  async login(
+    dto: LoginDto,
+  ): Promise<{ accessToken: string; mustChangePassword: boolean }> {
+    const user = await this.users.findByUsername(dto.username);
+    // Mesmo caminho/mensagem para usuário inexistente ou senha errada
+    // (não revela qual dos dois falhou).
     const valid =
-      this.safeEqual(dto.username, expectedUser) &&
-      this.safeEqual(dto.password, expectedPass);
-    if (!valid) {
-      // Mensagem genérica: não revela se foi o usuário ou a senha.
+      !!user && (await verifyPassword(dto.password, user.passwordHash));
+    if (!user || !valid) {
       throw new UnauthorizedException('Usuário ou senha inválidos.');
     }
 
-    const accessToken = await this.jwt.signAsync({ sub: dto.username });
-    return { accessToken };
+    const accessToken = await this.jwt.signAsync({ sub: user.id });
+    return { accessToken, mustChangePassword: user.mustChangePassword };
   }
 
-  /** Comparação em tempo constante para mitigar timing attacks. */
-  private safeEqual(a: string, b: string): boolean {
-    const bufA = Buffer.from(a);
-    const bufB = Buffer.from(b);
-    if (bufA.length !== bufB.length) return false;
-    return timingSafeEqual(bufA, bufB);
+  /** Troca a própria senha (exige a atual). Zera `mustChangePassword`. */
+  async changePassword(userId: number, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.users.findByIdOrThrow(userId);
+    const valid = await verifyPassword(dto.currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Senha atual incorreta.');
+    }
+    await this.users.setPassword(userId, await hashPassword(dto.newPassword));
   }
 }

@@ -2,12 +2,15 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule, type JwtModuleOptions } from '@nestjs/jwt';
+import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Module({
   imports: [
+    // Auth valida credenciais contra a tabela de usuários.
+    UserModule,
     // Secret e expiração vêm do ambiente (ConfigModule é global).
     JwtModule.registerAsync({
       inject: [ConfigService],
