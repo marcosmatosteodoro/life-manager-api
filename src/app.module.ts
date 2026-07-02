@@ -24,6 +24,7 @@ import { ConverterModule } from './converter/converter.module';
 import { TodoModule } from './todo/todo.module';
 import { UserModule } from './user/user.module';
 import { BacklogModule } from './backlog/backlog.module';
+import { HomeModule } from './home/home.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { BacklogModule } from './backlog/backlog.module';
     TodoModule,
     UserModule,
     BacklogModule,
+    HomeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

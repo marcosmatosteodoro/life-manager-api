@@ -11,5 +11,6 @@ import { Todo } from './entities/todo.entity';
   imports: [TypeOrmModule.forFeature([Todo, TodoCheck])],
   providers: [TodoService, TodoCheckService],
   controllers: [TodoController, TodoCheckController],
+  exports: [TodoCheckService], // usado pelo HomeModule (dashboard)
 })
 export class TodoModule {}
