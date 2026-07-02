@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
+import { tr } from '../i18n/translate';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { User } from './entities/user.entity';
@@ -25,7 +26,7 @@ export class UserService {
   async findByIdOrThrow(id: number): Promise<User> {
     const user = await this.repository.findOne({ where: { id } });
     if (!user) {
-      throw new NotFoundException(`Usuário #${id} não encontrado`);
+      throw new NotFoundException(tr('user.notFound', { id }));
     }
     return user;
   }
@@ -83,9 +84,7 @@ export class UserService {
     });
     if (clash) {
       throw new ConflictException(
-        field === 'email'
-          ? 'E-mail já está em uso.'
-          : 'Nome de usuário já está em uso.',
+        field === 'email' ? tr('user.emailInUse') : tr('user.usernameInUse'),
       );
     }
   }

@@ -1,0 +1,5 @@
+{
+  "notFound": "Usuário #{id} não encontrado",
+  "emailInUse": "E-mail já está em uso.",
+  "usernameInUse": "Nome de usuário já está em uso."
+}

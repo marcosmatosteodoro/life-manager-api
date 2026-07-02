@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiService } from '../ai/ai.service';
+import { tr } from '../i18n/translate';
 import { ArticleListResponseDto } from './dto/article-list-response.dto';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
@@ -69,7 +70,7 @@ export class ArticleService {
   async findOne(id: number): Promise<Article> {
     const article = await this.articleRepository.findOne({ where: { id } });
     if (!article) {
-      throw new NotFoundException(`Article #${id} não encontrado`);
+      throw new NotFoundException(tr('article.notFound', { id }));
     }
     return article;
   }
@@ -84,7 +85,7 @@ export class ArticleService {
       ...updateArticleDto,
     });
     if (!article) {
-      throw new NotFoundException(`Article #${id} não encontrado`);
+      throw new NotFoundException(tr('article.notFound', { id }));
     }
     // Recalcula o status sobre o registro já mesclado (existente + alterações).
     article.status = computeStatus(article);
@@ -94,7 +95,7 @@ export class ArticleService {
   async remove(id: number): Promise<void> {
     const result = await this.articleRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`Article #${id} não encontrado`);
+      throw new NotFoundException(tr('article.notFound', { id }));
     }
   }
 
@@ -108,11 +109,11 @@ export class ArticleService {
 
     const summary = article.summary;
     if (!summary || summary.trim() === '') {
-      throw new BadRequestException('Não há resumo para corrigir.');
+      throw new BadRequestException(tr('article.noSummary'));
     }
     if (summary.length > MAX_SUMMARY_LENGTH) {
       throw new BadRequestException(
-        `Resumo muito longo (máximo de ${MAX_SUMMARY_LENGTH} caracteres).`,
+        tr('article.summaryTooLong', { max: MAX_SUMMARY_LENGTH }),
       );
     }
 
@@ -136,18 +137,14 @@ export class ArticleService {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      throw new ServiceUnavailableException(
-        'A resposta da IA veio em formato inválido. Tente novamente.',
-      );
+      throw new ServiceUnavailableException(tr('article.aiInvalidFormat'));
     }
     const obj = parsed as Partial<CorrectSummaryResult>;
     if (
       typeof obj.correctedSummary !== 'string' ||
       typeof obj.score !== 'number'
     ) {
-      throw new ServiceUnavailableException(
-        'A resposta da IA veio incompleta. Tente novamente.',
-      );
+      throw new ServiceUnavailableException(tr('article.aiIncomplete'));
     }
     // Garante inteiro entre 0 e 10, mesmo se o modelo extrapolar.
     const score = Math.max(0, Math.min(10, Math.round(obj.score)));

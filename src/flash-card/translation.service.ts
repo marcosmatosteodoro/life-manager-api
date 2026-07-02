@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { tr } from '../i18n/translate';
 
 /** Formato (parcial) da resposta da MyMemory. */
 interface MyMemoryResponse {
@@ -29,7 +30,9 @@ export class TranslationService {
   async translate(text: string, from = 'en', to = 'pt-BR'): Promise<string> {
     const term = text.trim();
     if (!term) {
-      throw new ServiceUnavailableException('Nada para traduzir.');
+      throw new ServiceUnavailableException(
+        tr('flashcards.nothingToTranslate'),
+      );
     }
 
     const params = new URLSearchParams({
@@ -64,7 +67,7 @@ export class TranslationService {
         `Falha ao traduzir: ${error instanceof Error ? error.message : 'erro'}`,
       );
       throw new ServiceUnavailableException(
-        'Serviço de tradução indisponível no momento. Tente novamente.',
+        tr('flashcards.translationUnavailable'),
       );
     } finally {
       clearTimeout(timer);

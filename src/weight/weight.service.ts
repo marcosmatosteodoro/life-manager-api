@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { tr } from '../i18n/translate';
 import { CreateWeightDto } from './dto/create-weight.dto';
 import { UpdateWeightDto } from './dto/update-weight.dto';
 import { WeightListResponseDto } from './dto/weight-list-response.dto';
@@ -29,7 +30,7 @@ export class WeightService {
   async findOne(id: number): Promise<Weight> {
     const weight = await this.weightRepository.findOne({ where: { id } });
     if (!weight) {
-      throw new NotFoundException(`Weight #${id} não encontrado`);
+      throw new NotFoundException(tr('weight.notFound', { id }));
     }
     return weight;
   }
@@ -41,7 +42,7 @@ export class WeightService {
       ...updateWeightDto,
     });
     if (!weight) {
-      throw new NotFoundException(`Weight #${id} não encontrado`);
+      throw new NotFoundException(tr('weight.notFound', { id }));
     }
     return this.weightRepository.save(weight);
   }
@@ -49,7 +50,7 @@ export class WeightService {
   async remove(id: number): Promise<void> {
     const result = await this.weightRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`Weight #${id} não encontrado`);
+      throw new NotFoundException(tr('weight.notFound', { id }));
     }
   }
 }

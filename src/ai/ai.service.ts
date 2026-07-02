@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { tr } from '../i18n/translate';
 
 interface CompleteParams {
   /** Instruções fixas do recurso (role "system"). */
@@ -33,7 +34,7 @@ export class AiService {
     const apiKey = this.config.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
       // Fail secure: sem chave, o recurso de IA não opera.
-      throw new ServiceUnavailableException('Serviço de IA não configurado.');
+      throw new ServiceUnavailableException(tr('ai.notConfigured'));
     }
     this.client = new OpenAI({ apiKey });
     return this.client;
@@ -67,9 +68,7 @@ export class AiService {
       this.logger.error(
         `Falha ao chamar o provedor de IA: ${(error as Error).message}`,
       );
-      throw new ServiceUnavailableException(
-        'Não foi possível processar a solicitação de IA agora. Tente novamente.',
-      );
+      throw new ServiceUnavailableException(tr('ai.unavailable'));
     }
   }
 }

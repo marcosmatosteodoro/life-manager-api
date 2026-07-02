@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { tr } from '../i18n/translate';
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { TodoListResponseDto } from './dto/todo-list-response.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
@@ -39,7 +40,7 @@ export class TodoService {
   async findOne(id: number): Promise<Todo> {
     const todo = await this.todoRepository.findOne({ where: { id } });
     if (!todo) {
-      throw new NotFoundException(`Todo #${id} não encontrado`);
+      throw new NotFoundException(tr('todo.notFound', { id }));
     }
     return todo;
   }
@@ -48,7 +49,7 @@ export class TodoService {
     // preload garante 404 quando o id não existe, sem update silencioso.
     const todo = await this.todoRepository.preload({ id, ...dto });
     if (!todo) {
-      throw new NotFoundException(`Todo #${id} não encontrado`);
+      throw new NotFoundException(tr('todo.notFound', { id }));
     }
     return this.todoRepository.save(todo);
   }
@@ -57,7 +58,7 @@ export class TodoService {
     // Os checks somem em cascata (FK ON DELETE CASCADE).
     const result = await this.todoRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`Todo #${id} não encontrado`);
+      throw new NotFoundException(tr('todo.notFound', { id }));
     }
   }
 }

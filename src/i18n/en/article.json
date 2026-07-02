@@ -1,0 +1,7 @@
+{
+  "notFound": "Article #{id} not found",
+  "noSummary": "There is no summary to correct.",
+  "summaryTooLong": "Summary too long (maximum {max} characters).",
+  "aiInvalidFormat": "The AI response was in an invalid format. Please try again.",
+  "aiIncomplete": "The AI response was incomplete. Please try again."
+}

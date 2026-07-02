@@ -1,0 +1,8 @@
+{
+  "cardNotFound": "FlashCard #{id} não encontrado",
+  "cardsNotFound": "FlashCard(s) não encontrado(s): {ids}",
+  "groupNotFound": "FlashCardGroup #{id} não encontrado",
+  "cannotAbsorbItself": "Não é possível absorver um grupo nele mesmo",
+  "nothingToTranslate": "Nada para traduzir.",
+  "translationUnavailable": "Serviço de tradução indisponível no momento. Tente novamente."
+}

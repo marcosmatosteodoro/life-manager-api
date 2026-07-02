@@ -1,0 +1,4 @@
+{
+  "notFound": "BacklogItem #{id} não encontrado",
+  "reorderMismatch": "A ordem enviada deve conter exatamente os itens pendentes."
+}

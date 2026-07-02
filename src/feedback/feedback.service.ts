@@ -7,6 +7,7 @@ import {
   Not,
   Repository,
 } from 'typeorm';
+import { tr } from '../i18n/translate';
 import { AiService } from '../ai/ai.service';
 import { Apply } from '../apply/entities/apply.entity';
 import { Article } from '../article/entities/article.entity';
@@ -88,7 +89,7 @@ export class FeedbackService {
   async findOne(id: number): Promise<Feedback> {
     const feedback = await this.feedbackRepository.findOne({ where: { id } });
     if (!feedback) {
-      throw new NotFoundException(`Feedback #${id} não encontrado`);
+      throw new NotFoundException(tr('feedback.notFound', { id }));
     }
     return feedback;
   }

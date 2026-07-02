@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { tr } from '../i18n/translate';
 import { BacklogListResponseDto } from './dto/backlog-list-response.dto';
 import { CreateBacklogItemDto } from './dto/create-backlog-item.dto';
 import { UpdateBacklogItemDto } from './dto/update-backlog-item.dto';
@@ -66,7 +67,7 @@ export class BacklogService {
   async findOne(id: number): Promise<BacklogItem> {
     const item = await this.repository.findOne({ where: { id } });
     if (!item) {
-      throw new NotFoundException(`BacklogItem #${id} não encontrado`);
+      throw new NotFoundException(tr('backlog.notFound', { id }));
     }
     return item;
   }
@@ -132,9 +133,7 @@ export class BacklogService {
         uniqueGiven.size === pendingIds.size;
       const sameSet = [...uniqueGiven].every((id) => pendingIds.has(id));
       if (!sameSize || !sameSet) {
-        throw new BadRequestException(
-          'A ordem enviada deve conter exatamente os itens pendentes.',
-        );
+        throw new BadRequestException(tr('backlog.reorderMismatch'));
       }
 
       const byId = new Map(pendentes.map((p) => [p.id, p]));
@@ -197,7 +196,7 @@ export class BacklogService {
   ): Promise<BacklogItem> {
     const item = await manager.findOne(BacklogItem, { where: { id } });
     if (!item) {
-      throw new NotFoundException(`BacklogItem #${id} não encontrado`);
+      throw new NotFoundException(tr('backlog.notFound', { id }));
     }
     return item;
   }

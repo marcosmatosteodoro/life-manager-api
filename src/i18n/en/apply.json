@@ -1,0 +1,4 @@
+{
+  "notFound": "Apply #{id} not found",
+  "companyNotFound": "Company #{id} not found"
+}

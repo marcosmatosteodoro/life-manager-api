@@ -1,0 +1,5 @@
+{
+  "notFound": "Todo #{id} not found",
+  "checkNotFound": "TodoCheck #{id} not found",
+  "duplicateCheck": "A check already exists for this todo on {date}"
+}

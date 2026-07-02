@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Country } from '../country/entities/country.entity';
+import { tr } from '../i18n/translate';
 import { CompanyListResponseDto } from './dto/company-list-response.dto';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -37,7 +38,7 @@ export class CompanyService {
       relations: { country: true },
     });
     if (!company) {
-      throw new NotFoundException(`Company #${id} não encontrado`);
+      throw new NotFoundException(tr('company.notFound', { id }));
     }
     return company;
   }
@@ -56,7 +57,7 @@ export class CompanyService {
       ...updateCompanyDto,
     });
     if (!company) {
-      throw new NotFoundException(`Company #${id} não encontrado`);
+      throw new NotFoundException(tr('company.notFound', { id }));
     }
     return this.companyRepository.save(company);
   }
@@ -64,7 +65,7 @@ export class CompanyService {
   async remove(id: number): Promise<void> {
     const result = await this.companyRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`Company #${id} não encontrado`);
+      throw new NotFoundException(tr('company.notFound', { id }));
     }
   }
 
@@ -74,7 +75,9 @@ export class CompanyService {
       where: { id: countryId },
     });
     if (!country) {
-      throw new NotFoundException(`Country #${countryId} não encontrado`);
+      throw new NotFoundException(
+        tr('company.countryNotFound', { id: countryId }),
+      );
     }
   }
 }

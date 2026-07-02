@@ -1,6 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { join } from 'path';
+import {
+  AcceptLanguageResolver,
+  HeaderResolver,
+  I18nModule,
+} from 'nestjs-i18n';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WeightModule } from './weight/weight.module';
@@ -23,6 +29,13 @@ import { BacklogModule } from './backlog/backlog.module';
   imports: [
     // Carrega variáveis de ambiente do .env e as valida em tempo de boot.
     ConfigModule.forRoot({ isGlobal: true }),
+    // i18n: locale resolvido pelo Accept-Language (fallback en). Traduções em
+    // src/i18n/{en,pt}/*.json (copiadas para dist via nest-cli.json assets).
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: { path: join(__dirname, '/i18n/'), watch: true },
+      resolvers: [AcceptLanguageResolver, new HeaderResolver(['x-lang'])],
+    }),
     // Configuração assíncrona: credenciais vêm SEMPRE do ambiente, nunca hardcoded.
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

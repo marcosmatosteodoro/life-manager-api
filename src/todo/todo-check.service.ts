@@ -12,6 +12,7 @@ import {
   MoreThanOrEqual,
   Repository,
 } from 'typeorm';
+import { tr } from '../i18n/translate';
 import { CreateTodoCheckDto } from './dto/create-todo-check.dto';
 import { TodoCheckListResponseDto } from './dto/todo-check-list-response.dto';
 import { TodoCheckQueryDto } from './dto/todo-check-query.dto';
@@ -96,7 +97,7 @@ export class TodoCheckService {
     });
     if (duplicate) {
       throw new ConflictException(
-        `Já existe um check para este afazer na data ${dto.date}`,
+        tr('todo.duplicateCheck', { date: dto.date }),
       );
     }
     const check = this.todoCheckRepository.create(dto);
@@ -109,7 +110,7 @@ export class TodoCheckService {
       relations: { todo: true },
     });
     if (!check) {
-      throw new NotFoundException(`TodoCheck #${id} não encontrado`);
+      throw new NotFoundException(tr('todo.checkNotFound', { id }));
     }
     return check;
   }
@@ -120,7 +121,7 @@ export class TodoCheckService {
     }
     const check = await this.todoCheckRepository.preload({ id, ...dto });
     if (!check) {
-      throw new NotFoundException(`TodoCheck #${id} não encontrado`);
+      throw new NotFoundException(tr('todo.checkNotFound', { id }));
     }
     return this.todoCheckRepository.save(check);
   }
@@ -128,14 +129,14 @@ export class TodoCheckService {
   async remove(id: number): Promise<void> {
     const result = await this.todoCheckRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`TodoCheck #${id} não encontrado`);
+      throw new NotFoundException(tr('todo.checkNotFound', { id }));
     }
   }
 
   private async ensureTodoExists(todoId: number): Promise<void> {
     const todo = await this.todoRepository.findOne({ where: { id: todoId } });
     if (!todo) {
-      throw new NotFoundException(`Todo #${todoId} não encontrado`);
+      throw new NotFoundException(tr('todo.notFound', { id: todoId }));
     }
   }
 

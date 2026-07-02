@@ -10,6 +10,7 @@ import { UpdateFlashCardDto } from './dto/update-flash-card.dto';
 import { FlashCard } from './entities/flash-card.entity';
 import { attachTotalReviews } from './flash-card.util';
 import { TranslationService } from './translation.service';
+import { tr } from '../i18n/translate';
 
 @Injectable()
 export class FlashCardService {
@@ -37,7 +38,7 @@ export class FlashCardService {
   async findOne(id: number): Promise<FlashCard> {
     const card = await this.flashCardRepository.findOne({ where: { id } });
     if (!card) {
-      throw new NotFoundException(`FlashCard #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
     return attachTotalReviews(card);
   }
@@ -49,7 +50,7 @@ export class FlashCardService {
     }
     const card = await this.flashCardRepository.preload({ id, ...dto });
     if (!card) {
-      throw new NotFoundException(`FlashCard #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
     return attachTotalReviews(await this.flashCardRepository.save(card));
   }
@@ -57,7 +58,7 @@ export class FlashCardService {
   async remove(id: number): Promise<void> {
     const result = await this.flashCardRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`FlashCard #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
   }
 
@@ -65,7 +66,7 @@ export class FlashCardService {
   async review(id: number, correct: boolean): Promise<FlashCard> {
     const card = await this.flashCardRepository.findOne({ where: { id } });
     if (!card) {
-      throw new NotFoundException(`FlashCard #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
     this.applyReview(card, correct);
     return attachTotalReviews(await this.flashCardRepository.save(card));
@@ -78,7 +79,7 @@ export class FlashCardService {
   async translate(id: number): Promise<FlashCard> {
     const card = await this.flashCardRepository.findOne({ where: { id } });
     if (!card) {
-      throw new NotFoundException(`FlashCard #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
     if (card.translation) {
       return attachTotalReviews(card);
@@ -97,7 +98,7 @@ export class FlashCardService {
       const found = new Set(cards.map((c) => c.id));
       const missing = ids.filter((id) => !found.has(id));
       throw new NotFoundException(
-        `FlashCard(s) não encontrado(s): ${missing.join(', ')}`,
+        tr('flashcards.cardsNotFound', { ids: missing.join(', ') }),
       );
     }
     const byId = new Map(cards.map((c) => [c.id, c]));
@@ -122,7 +123,7 @@ export class FlashCardService {
       const found = new Set(cards.map((c) => c.id));
       const missing = ids.filter((id) => !found.has(id));
       throw new NotFoundException(
-        `FlashCard(s) não encontrado(s): ${missing.join(', ')}`,
+        tr('flashcards.cardsNotFound', { ids: missing.join(', ') }),
       );
     }
     const byId = new Map(cards.map((c) => [c.id, c]));
@@ -155,7 +156,9 @@ export class FlashCardService {
       where: { id: groupId },
     });
     if (!group) {
-      throw new NotFoundException(`FlashCardGroup #${groupId} não encontrado`);
+      throw new NotFoundException(
+        tr('flashcards.groupNotFound', { id: groupId }),
+      );
     }
   }
 

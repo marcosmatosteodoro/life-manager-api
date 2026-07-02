@@ -9,6 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   LANGUAGES,
   THEMES,
@@ -20,35 +21,66 @@ import {
 export class UpdateMeDto {
   @ApiPropertyOptional({ example: 'Marcos' })
   @IsOptional()
-  @IsString()
-  @Length(1, 255)
+  @IsString({
+    message: i18nValidationMessage('validation.isString', { property: 'nome' }),
+  })
+  @Length(1, 255, {
+    message: i18nValidationMessage('validation.lengthRange', {
+      property: 'nome',
+    }),
+  })
   name?: string;
 
   @ApiPropertyOptional({ example: 'marcos' })
   @IsOptional()
-  @IsString()
-  @Length(3, 255)
+  @IsString({
+    message: i18nValidationMessage('validation.isString', {
+      property: 'nome de usuário',
+    }),
+  })
+  @Length(3, 255, {
+    message: i18nValidationMessage('validation.lengthRange', {
+      property: 'nome de usuário',
+    }),
+  })
   username?: string;
 
   @ApiPropertyOptional({ example: 'marcos@example.com' })
   @IsOptional()
-  @IsEmail()
+  @IsEmail(
+    {},
+    {
+      message: i18nValidationMessage('validation.isEmail', {
+        property: 'e-mail',
+      }),
+    },
+  )
   email?: string;
 
   @ApiPropertyOptional({ example: 177, description: 'Altura em cm' })
   @IsOptional()
-  @IsInt()
-  @Min(50)
-  @Max(300)
+  @IsInt({
+    message: i18nValidationMessage('validation.isInt', { property: 'altura' }),
+  })
+  @Min(50, {
+    message: i18nValidationMessage('validation.min', { property: 'altura' }),
+  })
+  @Max(300, {
+    message: i18nValidationMessage('validation.max', { property: 'altura' }),
+  })
   heightCm?: number;
 
   @ApiPropertyOptional({ enum: THEMES })
   @IsOptional()
-  @IsIn(THEMES)
+  @IsIn(THEMES, {
+    message: i18nValidationMessage('validation.isIn', { property: 'tema' }),
+  })
   theme?: Theme;
 
   @ApiPropertyOptional({ enum: LANGUAGES })
   @IsOptional()
-  @IsIn(LANGUAGES)
+  @IsIn(LANGUAGES, {
+    message: i18nValidationMessage('validation.isIn', { property: 'idioma' }),
+  })
   language?: Language;
 }

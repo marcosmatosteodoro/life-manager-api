@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { tr } from '../i18n/translate';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
 /**
@@ -30,7 +31,7 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractToken(request);
     if (!token) {
-      throw new UnauthorizedException('Token ausente.');
+      throw new UnauthorizedException(tr('auth.tokenMissing'));
     }
     try {
       const payload = await this.jwt.verifyAsync<{ sub: string }>(token);
@@ -38,7 +39,7 @@ export class JwtAuthGuard implements CanActivate {
       (request as Request & { user?: { sub: string } }).user = payload;
       return true;
     } catch {
-      throw new UnauthorizedException('Token inválido ou expirado.');
+      throw new UnauthorizedException(tr('auth.tokenInvalid'));
     }
   }
 

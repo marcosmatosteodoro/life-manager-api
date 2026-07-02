@@ -1,6 +1,6 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -11,12 +11,18 @@ async function bootstrap() {
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
   });
 
+  // I18nValidationPipe estende o ValidationPipe (mesmas opções) e traduz as
+  // mensagens de validação pelo locale do request.
   app.useGlobalPipes(
-    new ValidationPipe({
+    new I18nValidationPipe({
       whitelist: true, // remove propriedades não declaradas nos DTOs
       forbidNonWhitelisted: true, // rejeita payload com campos extras
       transform: true, // converte tipos (ex.: query string -> number)
     }),
+  );
+  // Mantém o corpo de erro como { message: string[] } (front não muda).
+  app.useGlobalFilters(
+    new I18nValidationExceptionFilter({ detailedErrors: false }),
   );
 
   const swaggerConfig = new DocumentBuilder()

@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Country } from '../country/entities/country.entity';
+import { tr } from '../i18n/translate';
 import { JobSearchResponseDto, JobRowDto } from './dto/job-search-response.dto';
 import { SearchJobsDto } from './dto/search-jobs.dto';
 import { JobProvider } from './enums/job-provider.enum';
@@ -93,9 +94,7 @@ export class JobSearchService {
       ? configured.filter((p) => requested.includes(p.source))
       : configured;
     if (!chosen.length) {
-      throw new ServiceUnavailableException(
-        'Nenhum provedor de busca configurado/selecionado.',
-      );
+      throw new ServiceUnavailableException(tr('jobsearch.noProvider'));
     }
     return chosen;
   }
@@ -107,7 +106,9 @@ export class JobSearchService {
         where: { id: countryId },
       });
       if (!country) {
-        throw new NotFoundException(`País #${countryId} não encontrado`);
+        throw new NotFoundException(
+          tr('jobsearch.countryNotFound', { id: countryId }),
+        );
       }
       return country;
     }
@@ -116,7 +117,7 @@ export class JobSearchService {
     });
     if (!fallback) {
       throw new BadRequestException(
-        `Informe countryId: país padrão (${DEFAULT_COUNTRY_CODE}) não cadastrado.`,
+        tr('jobsearch.defaultCountryMissing', { code: DEFAULT_COUNTRY_CODE }),
       );
     }
     return fallback;

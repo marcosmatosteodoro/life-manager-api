@@ -1,0 +1,4 @@
+{
+  "notFound": "Company #{id} não encontrado",
+  "countryNotFound": "Country #{id} não encontrado"
+}

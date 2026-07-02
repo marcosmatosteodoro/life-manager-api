@@ -1,0 +1,5 @@
+{
+  "noProvider": "Nenhum provedor de busca configurado/selecionado.",
+  "countryNotFound": "País #{id} não encontrado",
+  "defaultCountryMissing": "Informe countryId: país padrão ({code}) não cadastrado."
+}

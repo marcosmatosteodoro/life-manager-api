@@ -1,0 +1,5 @@
+{
+  "noProvider": "No search provider configured/selected.",
+  "countryNotFound": "Country #{id} not found",
+  "defaultCountryMissing": "Provide countryId: default country ({code}) is not registered."
+}

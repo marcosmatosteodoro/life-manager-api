@@ -1,0 +1,19 @@
+{
+  "isNotEmpty": "{property} não pode ser vazio",
+  "isString": "{property} deve ser texto",
+  "isInt": "{property} deve ser um inteiro",
+  "isNumber": "{property} deve ser um número",
+  "isBoolean": "{property} deve ser booleano",
+  "isEmail": "{property} deve ser um e-mail válido",
+  "isUrl": "{property} deve ser uma URL válida",
+  "isDateString": "{property} deve ser uma data válida",
+  "isArray": "{property} deve ser uma lista",
+  "arrayNotEmpty": "{property} não pode ser vazio",
+  "isIn": "{property} tem um valor inválido",
+  "min": "{property} não pode ser menor que {constraints.0}",
+  "max": "{property} não pode ser maior que {constraints.0}",
+  "minLength": "{property} deve ter ao menos {constraints.0} caracteres",
+  "maxLength": "{property} deve ter no máximo {constraints.0} caracteres",
+  "length": "{property} tem tamanho inválido",
+  "lengthRange": "{property} deve ter entre {constraints.0} e {constraints.1} caracteres"
+}

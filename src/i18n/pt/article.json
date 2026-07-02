@@ -1,0 +1,7 @@
+{
+  "notFound": "Article #{id} não encontrado",
+  "noSummary": "Não há resumo para corrigir.",
+  "summaryTooLong": "Resumo muito longo (máximo de {max} caracteres).",
+  "aiInvalidFormat": "A resposta da IA veio em formato inválido. Tente novamente.",
+  "aiIncomplete": "A resposta da IA veio incompleta. Tente novamente."
+}

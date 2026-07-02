@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { tr } from '../i18n/translate';
 import { UserService } from '../user/user.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,7 +26,7 @@ export class AuthService {
     const valid =
       !!user && (await verifyPassword(dto.password, user.passwordHash));
     if (!user || !valid) {
-      throw new UnauthorizedException('Usuário ou senha inválidos.');
+      throw new UnauthorizedException(tr('auth.invalidCredentials'));
     }
 
     const accessToken = await this.jwt.signAsync({ sub: user.id });
@@ -37,7 +38,7 @@ export class AuthService {
     const user = await this.users.findByIdOrThrow(userId);
     const valid = await verifyPassword(dto.currentPassword, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException('Senha atual incorreta.');
+      throw new UnauthorizedException(tr('auth.currentPasswordIncorrect'));
     }
     await this.users.setPassword(userId, await hashPassword(dto.newPassword));
   }

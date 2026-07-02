@@ -4,6 +4,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { tr } from '../i18n/translate';
 import { ExchangeRateResponseDto } from './dto/exchange-rate-response.dto';
 
 /** Formato (parcial) da resposta da open.er-api.com. */
@@ -39,7 +40,9 @@ export class ExchangeRateService {
 
     const rate = rates[to];
     if (rate == null) {
-      throw new BadRequestException(`Moeda de destino não suportada: ${to}`);
+      throw new BadRequestException(
+        tr('converter.unsupportedTarget', { target: to }),
+      );
     }
     return { base: from, target: to, rate, date };
   }
@@ -74,9 +77,7 @@ export class ExchangeRateService {
           error instanceof Error ? error.message : 'erro'
         }`,
       );
-      throw new ServiceUnavailableException(
-        'Serviço de câmbio indisponível no momento. Use a taxa manual.',
-      );
+      throw new ServiceUnavailableException(tr('converter.unavailable'));
     } finally {
       clearTimeout(timer);
     }

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { tr } from '../i18n/translate';
 import { CreateDiaryDto } from './dto/create-diary.dto';
 import { DiaryListResponseDto } from './dto/diary-list-response.dto';
 import { UpdateDiaryDto } from './dto/update-diary.dto';
@@ -31,7 +32,7 @@ export class DiaryService {
   async findOne(id: number): Promise<Diary> {
     const diary = await this.diaryRepository.findOne({ where: { id } });
     if (!diary) {
-      throw new NotFoundException(`Diary #${id} não encontrado`);
+      throw new NotFoundException(tr('diary.notFound', { id }));
     }
     return diary;
   }
@@ -43,7 +44,7 @@ export class DiaryService {
       ...updateDiaryDto,
     });
     if (!diary) {
-      throw new NotFoundException(`Diary #${id} não encontrado`);
+      throw new NotFoundException(tr('diary.notFound', { id }));
     }
     return this.diaryRepository.save(diary);
   }
@@ -51,7 +52,7 @@ export class DiaryService {
   async remove(id: number): Promise<void> {
     const result = await this.diaryRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`Diary #${id} não encontrado`);
+      throw new NotFoundException(tr('diary.notFound', { id }));
     }
   }
 }

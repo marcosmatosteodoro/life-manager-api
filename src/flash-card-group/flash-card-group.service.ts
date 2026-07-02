@@ -12,6 +12,7 @@ import { FlashCardGroupListResponseDto } from './dto/flash-card-group-list-respo
 import { QuizQuestionDto } from './dto/quiz-question.dto';
 import { UpdateFlashCardGroupDto } from './dto/update-flash-card-group.dto';
 import { FlashCardGroup } from './entities/flash-card-group.entity';
+import { tr } from '../i18n/translate';
 
 @Injectable()
 export class FlashCardGroupService {
@@ -33,7 +34,7 @@ export class FlashCardGroupService {
   async review(id: number): Promise<FlashCard[]> {
     const exists = await this.groupRepository.countBy({ id });
     if (!exists) {
-      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
     const cards = await this.flashCardRepository
       .createQueryBuilder('card')
@@ -56,7 +57,7 @@ export class FlashCardGroupService {
   async reviewBlock(id: number): Promise<FlashCard[]> {
     const exists = await this.groupRepository.countBy({ id });
     if (!exists) {
-      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
     const cards = await this.flashCardRepository
       .createQueryBuilder('card')
@@ -75,7 +76,7 @@ export class FlashCardGroupService {
   async reviewQuiz(id: number): Promise<QuizQuestionDto[]> {
     const exists = await this.groupRepository.countBy({ id });
     if (!exists) {
-      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
     const cards = await this.flashCardRepository
       .createQueryBuilder('card')
@@ -133,9 +134,7 @@ export class FlashCardGroupService {
    */
   async absorb(targetId: number, sourceId: number): Promise<FlashCardGroup> {
     if (targetId === sourceId) {
-      throw new BadRequestException(
-        'Não é possível absorver um grupo nele mesmo',
-      );
+      throw new BadRequestException(tr('flashcards.cannotAbsorbItself'));
     }
 
     await this.groupRepository.manager.transaction(async (manager) => {
@@ -144,7 +143,7 @@ export class FlashCardGroupService {
       });
       if (!targetExists) {
         throw new NotFoundException(
-          `FlashCardGroup #${targetId} não encontrado`,
+          tr('flashcards.groupNotFound', { id: targetId }),
         );
       }
       const sourceExists = await manager.countBy(FlashCardGroup, {
@@ -152,7 +151,7 @@ export class FlashCardGroupService {
       });
       if (!sourceExists) {
         throw new NotFoundException(
-          `FlashCardGroup #${sourceId} não encontrado`,
+          tr('flashcards.groupNotFound', { id: sourceId }),
         );
       }
 
@@ -252,7 +251,7 @@ export class FlashCardGroupService {
       relations: { flashCards: true },
     });
     if (!group) {
-      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
     return this.withComputed(group);
   }
@@ -263,7 +262,7 @@ export class FlashCardGroupService {
   ): Promise<FlashCardGroup> {
     const group = await this.groupRepository.preload({ id, ...dto });
     if (!group) {
-      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
     await this.groupRepository.save(group);
     // Recarrega com os flashcards para devolver os campos calculados.
@@ -273,7 +272,7 @@ export class FlashCardGroupService {
   async remove(id: number): Promise<void> {
     const result = await this.groupRepository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException(`FlashCardGroup #${id} não encontrado`);
+      throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
   }
 

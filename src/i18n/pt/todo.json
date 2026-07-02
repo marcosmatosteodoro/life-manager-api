@@ -1,0 +1,5 @@
+{
+  "notFound": "Todo #{id} não encontrado",
+  "checkNotFound": "TodoCheck #{id} não encontrado",
+  "duplicateCheck": "Já existe um check para este afazer na data {date}"
+}
