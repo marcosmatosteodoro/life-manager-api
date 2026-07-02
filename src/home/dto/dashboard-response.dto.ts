@@ -56,4 +56,7 @@ export class DashboardResponseDto {
 
   @ApiProperty({ example: 12 })
   appliesCount: number;
+
+  @ApiProperty({ example: 2, description: 'Candidaturas feitas hoje' })
+  appliesToday: number;
 }

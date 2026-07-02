@@ -38,6 +38,7 @@ export class HomeService {
       totalCards,
       groupCount,
       appliesCount,
+      appliesToday,
     ] = await Promise.all([
       this.todoCheckService.today(), // garante/retorna os checks de hoje
       this.articleRepository.find({
@@ -54,6 +55,7 @@ export class HomeService {
       this.flashCardRepository.count(),
       this.groupRepository.count(),
       this.applyRepository.count(),
+      this.applyRepository.count({ where: { date: today } }),
     ]);
 
     const done = todayChecks.filter((c) => c.checked).length;
@@ -73,6 +75,7 @@ export class HomeService {
       study: { todayStatus: todayArticle?.status ?? null },
       flashcards: { totalCards, groupCount },
       appliesCount,
+      appliesToday,
     };
   }
 

@@ -56,7 +56,8 @@ describe('HomeService', () => {
     weightRepo.count.mockResolvedValue(1);
     flashCardRepo.count.mockResolvedValue(120);
     groupRepo.count.mockResolvedValue(8);
-    applyRepo.count.mockResolvedValue(12);
+    // 1ª chamada = total; 2ª = candidaturas de hoje.
+    applyRepo.count.mockResolvedValueOnce(12).mockResolvedValueOnce(2);
 
     const result = await service.getDashboard();
 
@@ -67,6 +68,7 @@ describe('HomeService', () => {
       study: { todayStatus: ArticleStatus.SUMMARY_IN_PROGRESS },
       flashcards: { totalCards: 120, groupCount: 8 },
       appliesCount: 12,
+      appliesToday: 2,
     });
   });
 
