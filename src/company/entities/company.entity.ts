@@ -5,9 +5,11 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Apply } from '../../apply/entities/apply.entity';
 import { Country } from '../../country/entities/country.entity';
 
 @Entity('company')
@@ -60,4 +62,12 @@ export class Company {
   @ApiProperty({ example: 1, nullable: true })
   @Column({ name: 'creator_id', type: 'int', nullable: true })
   creatorId: number | null;
+
+  // Relação inversa com apply (não é coluna; usada para contar candidaturas).
+  @OneToMany(() => Apply, (apply) => apply.company)
+  applies?: Apply[];
+
+  // applyCount — preenchido via loadRelationCountAndMap na listagem (não persistido).
+  @ApiProperty({ example: 3, description: 'Quantidade de candidaturas' })
+  applyCount?: number;
 }

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Apply } from '../apply/entities/apply.entity';
 import { Country } from '../country/entities/country.entity';
 import { tr } from '../i18n/translate';
 import { CompanyListResponseDto } from './dto/company-list-response.dto';
@@ -24,11 +25,24 @@ export class CompanyService {
   }
 
   async findAll(): Promise<CompanyListResponseDto> {
-    // Carrega a relação country; findAndCount retorna [registros, total].
+    // Carrega o país; findAndCount retorna [registros, total].
     const [rows, count] = await this.companyRepository.findAndCount({
       relations: { country: true },
       order: { name: 'ASC' },
     });
+    // Conta candidaturas por empresa em uma query agregada e mapeia em applyCount.
+    const counts = await this.companyRepository.manager
+      .createQueryBuilder(Apply, 'apply')
+      .select('apply.companyId', 'companyId')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('apply.companyId')
+      .getRawMany<{ companyId: number; count: string }>();
+    const countByCompany = new Map(
+      counts.map((row) => [Number(row.companyId), Number(row.count)]),
+    );
+    for (const company of rows) {
+      company.applyCount = countByCompany.get(company.id) ?? 0;
+    }
     return { count, rows };
   }
 

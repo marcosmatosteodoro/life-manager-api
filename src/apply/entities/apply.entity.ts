@@ -50,7 +50,9 @@ export class Apply {
 
   // Relação com company; ON DELETE RESTRICT evita apagar empresa com candidaturas.
   @ApiProperty({ type: () => Company, required: false })
-  @ManyToOne(() => Company, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => Company, (company) => company.applies, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'company_id' })
   company?: Company;
 

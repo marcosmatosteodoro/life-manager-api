@@ -12,6 +12,14 @@ type MockRepository<T extends object = object> = Partial<
   Record<keyof Repository<T>, jest.Mock>
 >;
 
+// Query builder agregado (COUNT + groupBy) usado para contar candidaturas.
+const createQueryBuilderMock = () => ({
+  select: jest.fn().mockReturnThis(),
+  addSelect: jest.fn().mockReturnThis(),
+  groupBy: jest.fn().mockReturnThis(),
+  getRawMany: jest.fn(),
+});
+
 const createMockRepository = <T extends object>(): MockRepository<T> => ({
   create: jest.fn(),
   save: jest.fn(),
@@ -112,9 +120,14 @@ describe('CompanyService', () => {
   });
 
   describe('findAll', () => {
-    it('retorna { count, rows } com a relação country e ordenado por nome', async () => {
+    it('retorna { count, rows } com país, ordenado por nome, e mapeia applyCount', async () => {
       const rows = [buildCompany({ id: 1 }), buildCompany({ id: 2 })];
       companyRepository.findAndCount!.mockResolvedValue([rows, 2]);
+      const qb = createQueryBuilderMock();
+      qb.getRawMany.mockResolvedValue([{ companyId: 1, count: '3' }]);
+      (companyRepository as unknown as { manager: unknown }).manager = {
+        createQueryBuilder: jest.fn(() => qb),
+      };
 
       const result = await service.findAll();
 
@@ -122,11 +135,20 @@ describe('CompanyService', () => {
         relations: { country: true },
         order: { name: 'ASC' },
       });
-      expect(result).toEqual({ count: 2, rows });
+      expect(qb.groupBy).toHaveBeenCalledWith('apply.companyId');
+      expect(result.count).toBe(2);
+      // Empresa 1 tem 3 candidaturas; a 2, nenhuma → 0 (deny-by-default do map).
+      expect(result.rows[0].applyCount).toBe(3);
+      expect(result.rows[1].applyCount).toBe(0);
     });
 
     it('retorna count 0 e rows vazio quando não há registros', async () => {
       companyRepository.findAndCount!.mockResolvedValue([[], 0]);
+      const qb = createQueryBuilderMock();
+      qb.getRawMany.mockResolvedValue([]);
+      (companyRepository as unknown as { manager: unknown }).manager = {
+        createQueryBuilder: jest.fn(() => qb),
+      };
 
       const result = await service.findAll();
 
