@@ -36,7 +36,10 @@ export class AiService {
       // Fail secure: sem chave, o recurso de IA não opera.
       throw new ServiceUnavailableException(tr('ai.notConfigured'));
     }
-    this.client = new OpenAI({ apiKey });
+    // Timeout explícito + poucos retries: em serverless (Vercel), falhar rápido
+    // e limpo (503) é melhor que estourar o tempo da função. Configurável por env.
+    const timeout = Number(this.config.get('OPENAI_TIMEOUT_MS')) || 30_000;
+    this.client = new OpenAI({ apiKey, timeout, maxRetries: 1 });
     return this.client;
   }
 
