@@ -7,6 +7,7 @@ import {
   IsPositive,
   IsString,
   Length,
+  ValidateIf,
 } from 'class-validator';
 import {
   DEFAULT_STATUS,
@@ -30,6 +31,14 @@ export class CreateProblemDto {
   @IsOptional()
   @IsIn(PROBLEM_STATUSES)
   status?: ProblemStatus;
+
+  // categoryId opcional; `null` limpa a categoria (não é obrigatória).
+  @ApiPropertyOptional({ example: 1, nullable: true, description: 'Id da categoria (FK)' })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @IsPositive()
+  categoryId?: number | null;
 
   // creatorId opcional enquanto não há autenticação.
   @ApiPropertyOptional({

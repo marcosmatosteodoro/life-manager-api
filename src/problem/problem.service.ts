@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { ProblemCategory } from '../problem-category/entities/problem-category.entity';
 import { tr } from '../i18n/translate';
 import { CreateProblemDto } from './dto/create-problem.dto';
 import { ProblemListResponseDto } from './dto/problem-list-response.dto';
@@ -17,16 +18,20 @@ export class ProblemService {
   constructor(
     @InjectRepository(Problem)
     private readonly repository: Repository<Problem>,
+    @InjectRepository(ProblemCategory)
+    private readonly categoryRepository: Repository<ProblemCategory>,
   ) {}
 
   /** Cria no fim da lista (position = maior + 1). */
   async create(dto: CreateProblemDto): Promise<Problem> {
+    if (dto.categoryId != null) await this.ensureCategoryExists(dto.categoryId);
     const next = (await this.maxPosition(this.repository.manager)) + 1;
     const problem = this.repository.create({
       title: dto.title,
       description: dto.description ?? null,
       status: dto.status ?? DEFAULT_STATUS,
       position: next,
+      categoryId: dto.categoryId ?? null,
       creatorId: dto.creatorId ?? null,
     });
     return this.repository.save(problem);
@@ -36,20 +41,24 @@ export class ProblemService {
   async findAll(status?: ProblemStatus): Promise<ProblemListResponseDto> {
     const rows = await this.repository.find({
       where: status ? { status } : {},
+      relations: { category: true },
       order: { position: 'ASC' },
     });
     return { count: rows.length, rows };
   }
 
   async findOne(id: number): Promise<Problem> {
-    const problem = await this.repository.findOne({ where: { id } });
+    const problem = await this.repository.findOne({
+      where: { id },
+      relations: { category: true },
+    });
     if (!problem) {
       throw new NotFoundException(tr('problem.notFound', { id }));
     }
     return problem;
   }
 
-  /** Edita título, descrição e/ou status (a position muda pela rota de reorder). */
+  /** Edita título, descrição, status e/ou categoria (a position muda no reorder). */
   async update(id: number, dto: UpdateProblemDto): Promise<Problem> {
     const problem = await this.findOne(id);
     if (dto.title !== undefined) problem.title = dto.title;
@@ -57,6 +66,10 @@ export class ProblemService {
       problem.description = dto.description ?? null;
     }
     if (dto.status !== undefined) problem.status = dto.status;
+    if (dto.categoryId !== undefined) {
+      if (dto.categoryId != null) await this.ensureCategoryExists(dto.categoryId);
+      problem.categoryId = dto.categoryId;
+    }
     return this.repository.save(problem);
   }
 
@@ -109,6 +122,16 @@ export class ProblemService {
         .where('position > :threshold', { threshold: oldPosition })
         .execute();
     });
+  }
+
+  /** Garante que a categoria referenciada existe (erro limpo em vez de FK). */
+  private async ensureCategoryExists(categoryId: number): Promise<void> {
+    const category = await this.categoryRepository.findOne({
+      where: { id: categoryId },
+    });
+    if (!category) {
+      throw new NotFoundException(tr('problem.categoryNotFound', { id: categoryId }));
+    }
   }
 
   /** Maior position existente (0 se não houver). */

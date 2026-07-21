@@ -3,9 +3,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { ProblemCategory } from '../../problem-category/entities/problem-category.entity';
 import {
   DEFAULT_STATUS,
   PROBLEM_STATUSES,
@@ -48,6 +51,17 @@ export class Problem {
   @ApiProperty()
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // categoryId — FK opcional para problem_category (categoria não é obrigatória).
+  @ApiProperty({ example: 1, nullable: true, description: 'Id da categoria (FK)' })
+  @Column({ name: 'category_id', type: 'int', nullable: true })
+  categoryId: number | null;
+
+  // Relação com a categoria; ON DELETE SET NULL (apagar categoria não quebra o problema).
+  @ApiProperty({ type: () => ProblemCategory, required: false, nullable: true })
+  @ManyToOne(() => ProblemCategory, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'category_id' })
+  category?: ProblemCategory | null;
 
   // creatorId numérico, null true (autenticação virá depois)
   @ApiProperty({ example: 1, nullable: true })

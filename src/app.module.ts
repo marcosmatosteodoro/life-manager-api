@@ -24,6 +24,7 @@ import { ConverterModule } from './converter/converter.module';
 import { TodoModule } from './todo/todo.module';
 import { UserModule } from './user/user.module';
 import { BacklogModule } from './backlog/backlog.module';
+import { ProblemCategoryModule } from './problem-category/problem-category.module';
 import { ProblemModule } from './problem/problem.module';
 import { HomeModule } from './home/home.module';
 
@@ -74,6 +75,7 @@ import { HomeModule } from './home/home.module';
     TodoModule,
     UserModule,
     BacklogModule,
+    ProblemCategoryModule,
     ProblemModule,
     HomeModule,
   ],

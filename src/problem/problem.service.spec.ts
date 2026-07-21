@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ProblemCategory } from '../problem-category/entities/problem-category.entity';
 import { CreateProblemDto } from './dto/create-problem.dto';
 import { Problem } from './entities/problem.entity';
 import { ProblemService } from './problem.service';
@@ -21,6 +22,7 @@ const buildProblem = (o: Partial<Problem> = {}): Problem => ({
   position: 1,
   description: null,
   status: 'pendente',
+  categoryId: null,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,
@@ -36,6 +38,7 @@ describe('ProblemService', () => {
     save: jest.Mock;
     manager: { transaction: jest.Mock; createQueryBuilder: jest.Mock };
   };
+  let categoryRepo: { findOne: jest.Mock };
   let manager: {
     find: jest.Mock;
     findOne: jest.Mock;
@@ -64,11 +67,13 @@ describe('ProblemService', () => {
         createQueryBuilder: jest.fn(() => qb),
       },
     };
+    categoryRepo = { findOne: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProblemService,
         { provide: getRepositoryToken(Problem), useValue: repo },
+        { provide: getRepositoryToken(ProblemCategory), useValue: categoryRepo },
       ],
     }).compile();
     service = module.get(ProblemService);
@@ -103,13 +108,14 @@ describe('ProblemService', () => {
   });
 
   describe('findAll', () => {
-    it('sem filtro: ordena por position ASC', async () => {
+    it('sem filtro: ordena por position ASC e carrega a categoria', async () => {
       repo.find.mockResolvedValue([buildProblem()]);
 
       await service.findAll();
 
       expect(repo.find).toHaveBeenCalledWith({
         where: {},
+        relations: { category: true },
         order: { position: 'ASC' },
       });
     });
@@ -121,8 +127,38 @@ describe('ProblemService', () => {
 
       expect(repo.find).toHaveBeenCalledWith({
         where: { status: 'concluido' },
+        relations: { category: true },
         order: { position: 'ASC' },
       });
+    });
+  });
+
+  describe('categoria', () => {
+    it('cria com categoria válida', async () => {
+      qb.getRawOne.mockResolvedValue({ max: 0 });
+      categoryRepo.findOne.mockResolvedValue({ id: 2, name: 'Bug' });
+
+      const result = await service.create({ title: 'X', categoryId: 2 });
+
+      expect(categoryRepo.findOne).toHaveBeenCalledWith({ where: { id: 2 } });
+      expect(result).toMatchObject({ categoryId: 2 });
+    });
+
+    it('lança NotFound quando a categoria não existe', async () => {
+      categoryRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create({ title: 'X', categoryId: 999 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('update com categoryId null limpa a categoria (sem validar)', async () => {
+      repo.findOne.mockResolvedValue(buildProblem({ categoryId: 2 }));
+
+      const result = await service.update(1, { categoryId: null });
+
+      expect(categoryRepo.findOne).not.toHaveBeenCalled();
+      expect(result.categoryId).toBeNull();
     });
   });
 

@@ -11,6 +11,7 @@ const buildProblem = (overrides: Partial<Problem> = {}): Problem => ({
   position: 1,
   description: null,
   status: 'pendente',
+  categoryId: null,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,
