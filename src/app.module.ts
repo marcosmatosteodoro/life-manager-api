@@ -12,6 +12,7 @@ import {
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserThrottlerGuard } from './common/throttler/user-throttler.guard';
+import { DbDialectModule } from './database/db-dialect.module';
 import { WeightModule } from './weight/weight.module';
 import { ArticleModule } from './article/article.module';
 import { CountryModule } from './country/country.module';
@@ -42,6 +43,8 @@ import { HomeModule } from './home/home.module';
       loaderOptions: { path: join(__dirname, '/i18n/'), watch: true },
       resolvers: [AcceptLanguageResolver, new HeaderResolver(['x-lang'])],
     }),
+    // Strategy de dialeto do banco (SQL específico por DB_TYPE, ex.: RANDOM).
+    DbDialectModule,
     // Rate limit global (deny-by-default de abuso): 100 req/min por usuário
     // (ou IP). Endpoints caros de IA e o login têm limites próprios via @Throttle.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),

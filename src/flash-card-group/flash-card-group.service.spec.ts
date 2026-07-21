@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { DbDialect } from '../database/db-dialect';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { FlashCardGroup } from './entities/flash-card-group.entity';
 import { FlashCardGroupService } from './flash-card-group.service';
@@ -83,6 +84,8 @@ describe('FlashCardGroupService', () => {
           provide: getRepositoryToken(FlashCard),
           useValue: { createQueryBuilder: jest.fn(() => qb) },
         },
+        // Dialeto de teste = Postgres (RANDOM()), casa com as asserções abaixo.
+        { provide: DbDialect, useValue: { randomOrder: () => 'RANDOM()' } },
       ],
     }).compile();
 

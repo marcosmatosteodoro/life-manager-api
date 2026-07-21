@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { DbDialect } from '../database/db-dialect';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { attachTotalReviews } from '../flash-card/flash-card.util';
 import { CreateFlashCardGroupDto } from './dto/create-flash-card-group.dto';
@@ -21,15 +22,16 @@ export class FlashCardGroupService {
     private readonly groupRepository: Repository<FlashCardGroup>,
     @InjectRepository(FlashCard)
     private readonly flashCardRepository: Repository<FlashCard>,
+    private readonly dialect: DbDialect,
   ) {}
 
   /**
    * Flashcards do grupo ordenados para revisão:
    * - score negativo (cards "difíceis") primeiro;
    * - depois por lastReview mais antigo (nunca revisado primeiro);
-   * - empate final aleatório (RANDOM): dá variedade dia a dia e evita
-   *   memorizar a sequência em vez do termo. RANDOM() é sintaxe Postgres
-   *   (banco padrão do app).
+   * - empate final aleatório: dá variedade dia a dia e evita memorizar a
+   *   sequência em vez do termo. A função aleatória vem do dialeto (DbDialect),
+   *   portável entre bancos conforme DB_TYPE.
    */
   async review(id: number): Promise<FlashCard[]> {
     const exists = await this.groupRepository.countBy({ id });
@@ -41,18 +43,17 @@ export class FlashCardGroupService {
       .where('card.flashCardGroupId = :id', { id })
       .orderBy('CASE WHEN card.score < 0 THEN 0 ELSE 1 END', 'ASC')
       .addOrderBy('card.lastReview', 'ASC', 'NULLS FIRST')
-      .addOrderBy('RANDOM()')
+      .addOrderBy(this.dialect.randomOrder())
       .getMany();
     return cards.map(attachTotalReviews);
   }
 
   /**
    * Flashcards do grupo para o modo bloco (combinação): ordem totalmente
-   * aleatória (`RANDOM()`), sem priorizar score nem lastReview. Diferente do
-   * `review` (spaced repetition, que sempre coloca os mesmos cards difíceis na
-   * frente), aqui cada partida sorteia um subconjunto diferente do grupo — dá
-   * variedade e evita repetir sempre os mesmos termos. RANDOM() é sintaxe
-   * Postgres (banco padrão do app).
+   * aleatória, sem priorizar score nem lastReview. Diferente do `review`
+   * (spaced repetition, que sempre coloca os mesmos cards difíceis na frente),
+   * aqui cada partida sorteia um subconjunto diferente do grupo — dá variedade
+   * e evita repetir sempre os mesmos termos. A função aleatória vem do dialeto.
    */
   async reviewBlock(id: number): Promise<FlashCard[]> {
     const exists = await this.groupRepository.countBy({ id });
@@ -62,7 +63,7 @@ export class FlashCardGroupService {
     const cards = await this.flashCardRepository
       .createQueryBuilder('card')
       .where('card.flashCardGroupId = :id', { id })
-      .orderBy('RANDOM()')
+      .orderBy(this.dialect.randomOrder())
       .getMany();
     return cards.map(attachTotalReviews);
   }
@@ -83,7 +84,7 @@ export class FlashCardGroupService {
       .where('card.flashCardGroupId = :id', { id })
       .orderBy('CASE WHEN card.score < 0 THEN 0 ELSE 1 END', 'ASC')
       .addOrderBy('card.lastReview', 'ASC', 'NULLS FIRST')
-      .addOrderBy('RANDOM()')
+      .addOrderBy(this.dialect.randomOrder())
       .getMany();
 
     const withValue = cards.filter((c) => c.value && c.value.trim());
