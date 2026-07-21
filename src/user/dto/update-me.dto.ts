@@ -8,14 +8,17 @@ import {
   Length,
   Max,
   Min,
+  Validate,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   LANGUAGES,
   THEMES,
+  type CustomColors,
   type Language,
   type Theme,
 } from '../user.constants';
+import { IsCustomColors } from '../validators/is-custom-colors.validator';
 
 /** Campos editáveis do próprio perfil. `passwordHash` nunca entra aqui. */
 export class UpdateMeDto {
@@ -83,4 +86,12 @@ export class UpdateMeDto {
     message: i18nValidationMessage('validation.isIn', { property: 'idioma' }),
   })
   language?: Language;
+
+  @ApiPropertyOptional({
+    description: 'Cores do tema custom (token → hex)',
+    example: { fg: '#171717', surface: '#ffffff' },
+  })
+  @IsOptional()
+  @Validate(IsCustomColors)
+  customColors?: CustomColors;
 }

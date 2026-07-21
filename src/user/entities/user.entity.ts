@@ -11,6 +11,7 @@ import {
   DEFAULT_THEME,
   LANGUAGES,
   THEMES,
+  type CustomColors,
   type Language,
   type Theme,
 } from '../user.constants';
@@ -69,6 +70,15 @@ export class User {
     default: DEFAULT_LANGUAGE,
   })
   language: Language;
+
+  // Cores do tema custom (JSON). NULL enquanto o usuário não personalizar.
+  @ApiProperty({
+    nullable: true,
+    description: 'Cores do tema custom (token → hex)',
+    example: { fg: '#171717', surface: '#ffffff' },
+  })
+  @Column({ name: 'custom_colors', type: 'jsonb', nullable: true })
+  customColors: CustomColors | null;
 
   // Força a troca de senha no próximo login (usado no admin semeado).
   @ApiProperty({ example: false })

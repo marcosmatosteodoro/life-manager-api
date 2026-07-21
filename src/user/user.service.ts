@@ -52,6 +52,7 @@ export class UserService {
     if (dto.heightCm !== undefined) user.heightCm = dto.heightCm;
     if (dto.theme !== undefined) user.theme = dto.theme;
     if (dto.language !== undefined) user.language = dto.language;
+    if (dto.customColors !== undefined) user.customColors = dto.customColors;
 
     return UserResponseDto.from(await this.repository.save(user));
   }

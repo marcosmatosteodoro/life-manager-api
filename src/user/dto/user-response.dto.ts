@@ -3,6 +3,7 @@ import type { User } from '../entities/user.entity';
 import {
   LANGUAGES,
   THEMES,
+  type CustomColors,
   type Language,
   type Theme,
 } from '../user.constants';
@@ -16,6 +17,7 @@ export class UserResponseDto {
   @ApiProperty({ nullable: true }) heightCm: number | null;
   @ApiProperty({ enum: THEMES }) theme: Theme;
   @ApiProperty({ enum: LANGUAGES }) language: Language;
+  @ApiProperty({ nullable: true }) customColors: CustomColors | null;
   @ApiProperty() mustChangePassword: boolean;
 
   static from(user: User): UserResponseDto {
@@ -27,6 +29,7 @@ export class UserResponseDto {
       heightCm: user.heightCm,
       theme: user.theme,
       language: user.language,
+      customColors: user.customColors,
       mustChangePassword: user.mustChangePassword,
     };
   }

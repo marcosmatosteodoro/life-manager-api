@@ -23,6 +23,7 @@ const buildUser = (overrides: Partial<User> = {}): User => ({
   heightCm: 177,
   theme: 'light',
   language: 'en-US',
+  customColors: null,
   mustChangePassword: false,
   createdAt: new Date('2026-06-30T08:00:00.000Z'),
   updatedAt: new Date('2026-06-30T08:00:00.000Z'),
@@ -76,6 +77,17 @@ describe('UserService', () => {
 
       expect(result).not.toHaveProperty('passwordHash');
       expect(result).toMatchObject({ name: 'Novo', heightCm: 180 });
+    });
+
+    it('grava customColors do tema custom', async () => {
+      const user = buildUser();
+      repository.findOne!.mockResolvedValue(user);
+      repository.save!.mockImplementation((u) => Promise.resolve(u));
+
+      const customColors = { fg: '#111111', surface: '#fafafa' };
+      const result = await service.updateMe(1, { theme: 'custom', customColors });
+
+      expect(result).toMatchObject({ theme: 'custom', customColors });
     });
 
     it('bloqueia username já usado por outro usuário', async () => {
