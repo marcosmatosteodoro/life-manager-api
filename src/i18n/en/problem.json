@@ -1,3 +1,4 @@
 {
-  "notFound": "Problem #{id} not found"
+  "notFound": "Problem #{id} not found",
+  "reorderMismatch": "The submitted order must contain exactly all problems."
 }

@@ -23,6 +23,11 @@ export class Problem {
   @Column({ type: 'varchar', length: 255, nullable: false })
   title: string;
 
+  // Ordem manual (1..N contígua entre todos os problemas). Regras no service.
+  @ApiProperty({ example: 1 })
+  @Column({ type: 'int', nullable: false })
+  position: number;
+
   @ApiProperty({ example: 'Investigar consultas N+1 no dashboard.', nullable: true })
   @Column({ type: 'text', nullable: true })
   description: string | null;

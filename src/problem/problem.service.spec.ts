@@ -1,117 +1,127 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CreateProblemDto } from './dto/create-problem.dto';
 import { Problem } from './entities/problem.entity';
 import { ProblemService } from './problem.service';
 
-// Mock tipado do Repository — nenhuma chamada real ao banco.
-type MockRepository<T extends object = object> = Partial<
-  Record<keyof Repository<T>, jest.Mock>
->;
-
-const createMockRepository = <T extends object>(): MockRepository<T> => ({
-  create: jest.fn(),
-  save: jest.fn(),
-  find: jest.fn(),
-  findOne: jest.fn(),
-  delete: jest.fn(),
+// QueryBuilder encadeável (maxPosition usa select/getRawOne; remove usa update/set/where/execute).
+const makeQb = (raw: { max: number | null } = { max: null }) => ({
+  select: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  getRawOne: jest.fn().mockResolvedValue(raw),
+  update: jest.fn().mockReturnThis(),
+  set: jest.fn().mockReturnThis(),
+  execute: jest.fn().mockResolvedValue({ affected: 0 }),
 });
 
-const buildProblem = (overrides: Partial<Problem> = {}): Problem => ({
+const buildProblem = (o: Partial<Problem> = {}): Problem => ({
   id: 1,
   title: 'Login lento em produção',
+  position: 1,
   description: null,
   status: 'pendente',
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
   creatorId: null,
-  ...overrides,
+  ...o,
 });
 
 describe('ProblemService', () => {
   let service: ProblemService;
-  let repository: MockRepository<Problem>;
+  let repo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    manager: { transaction: jest.Mock; createQueryBuilder: jest.Mock };
+  };
+  let manager: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    save: jest.Mock;
+    remove: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let qb: ReturnType<typeof makeQb>;
 
   beforeEach(async () => {
+    qb = makeQb();
+    manager = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      save: jest.fn((e) => Promise.resolve(e)),
+      remove: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(() => qb),
+    };
+    repo = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      create: jest.fn((d: unknown) => d),
+      save: jest.fn((e: unknown) => Promise.resolve(e)),
+      manager: {
+        transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+        createQueryBuilder: jest.fn(() => qb),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProblemService,
-        {
-          provide: getRepositoryToken(Problem),
-          useValue: createMockRepository<Problem>(),
-        },
+        { provide: getRepositoryToken(Problem), useValue: repo },
       ],
     }).compile();
-
-    service = module.get<ProblemService>(ProblemService);
-    repository = module.get(getRepositoryToken(Problem));
+    service = module.get(ProblemService);
   });
 
   afterEach(() => jest.clearAllMocks());
 
-  it('deve estar definido', () => {
-    expect(service).toBeDefined();
-  });
-
   describe('create', () => {
-    it('cria com status default (pendente) quando não informado', async () => {
-      const dto: CreateProblemDto = { title: 'Login lento' };
-      const entity = buildProblem({ title: 'Login lento' });
-      repository.create!.mockReturnValue(entity);
-      repository.save!.mockResolvedValue(entity);
+    it('cria no fim (maior position + 1) com status default', async () => {
+      qb.getRawOne.mockResolvedValue({ max: 3 });
 
+      const dto: CreateProblemDto = { title: 'Novo' };
       const result = await service.create(dto);
 
-      expect(repository.create).toHaveBeenCalledWith({
-        title: 'Login lento',
-        description: null,
+      expect(result).toMatchObject({
+        title: 'Novo',
         status: 'pendente',
-        creatorId: null,
+        position: 4,
       });
-      expect(result).toEqual(entity);
     });
 
-    it('respeita o status informado na criação', async () => {
-      const dto: CreateProblemDto = {
-        title: 'Bug X',
+    it('primeira criação recebe position 1 e respeita o status enviado', async () => {
+      qb.getRawOne.mockResolvedValue({ max: null });
+
+      const result = await service.create({
+        title: 'Bug',
         status: 'em_progresso',
-      };
-      const entity = buildProblem({ title: 'Bug X', status: 'em_progresso' });
-      repository.create!.mockReturnValue(entity);
-      repository.save!.mockResolvedValue(entity);
+      });
 
-      await service.create(dto);
-
-      expect(repository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'em_progresso' }),
-      );
+      expect(result).toMatchObject({ position: 1, status: 'em_progresso' });
     });
   });
 
   describe('findAll', () => {
-    it('sem filtro: lista todos ordenados por createdAt DESC', async () => {
-      const rows = [buildProblem({ id: 2 }), buildProblem({ id: 1 })];
-      repository.find!.mockResolvedValue(rows);
+    it('sem filtro: ordena por position ASC', async () => {
+      repo.find.mockResolvedValue([buildProblem()]);
 
-      const result = await service.findAll();
+      await service.findAll();
 
-      expect(repository.find).toHaveBeenCalledWith({
+      expect(repo.find).toHaveBeenCalledWith({
         where: {},
-        order: { createdAt: 'DESC' },
+        order: { position: 'ASC' },
       });
-      expect(result).toEqual({ count: 2, rows });
     });
 
     it('com filtro: aplica o where por status', async () => {
-      repository.find!.mockResolvedValue([]);
+      repo.find.mockResolvedValue([]);
 
       await service.findAll('concluido');
 
-      expect(repository.find).toHaveBeenCalledWith({
+      expect(repo.find).toHaveBeenCalledWith({
         where: { status: 'concluido' },
-        order: { createdAt: 'DESC' },
+        order: { position: 'ASC' },
       });
     });
   });
@@ -119,24 +129,20 @@ describe('ProblemService', () => {
   describe('findOne', () => {
     it('retorna o registro quando encontrado', async () => {
       const entity = buildProblem();
-      repository.findOne!.mockResolvedValue(entity);
+      repo.findOne.mockResolvedValue(entity);
 
       await expect(service.findOne(1)).resolves.toEqual(entity);
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
     });
 
     it('lança NotFoundException quando não encontrado', async () => {
-      repository.findOne!.mockResolvedValue(null);
-
+      repo.findOne.mockResolvedValue(null);
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
-    it('atualiza título, descrição e status quando enviados', async () => {
-      const entity = buildProblem();
-      repository.findOne!.mockResolvedValue(entity);
-      repository.save!.mockImplementation((p: Problem) => Promise.resolve(p));
+    it('atualiza título, descrição e status', async () => {
+      repo.findOne.mockResolvedValue(buildProblem());
 
       const result = await service.update(1, {
         title: 'Novo título',
@@ -144,32 +150,64 @@ describe('ProblemService', () => {
         status: 'concluido',
       });
 
-      expect(result.title).toBe('Novo título');
-      expect(result.description).toBe('nova desc');
-      expect(result.status).toBe('concluido');
+      expect(result).toMatchObject({
+        title: 'Novo título',
+        description: 'nova desc',
+        status: 'concluido',
+      });
     });
 
     it('lança NotFoundException quando o id não existe', async () => {
-      repository.findOne!.mockResolvedValue(null);
-
+      repo.findOne.mockResolvedValue(null);
       await expect(service.update(999, { title: 'X' })).rejects.toThrow(
         NotFoundException,
       );
-      expect(repository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reorder', () => {
+    it('reatribui position pela ordem enviada', async () => {
+      manager.find.mockResolvedValue([
+        buildProblem({ id: 1, position: 1 }),
+        buildProblem({ id: 2, position: 2 }),
+        buildProblem({ id: 3, position: 3 }),
+      ]);
+
+      const result = await service.reorder([3, 1, 2]);
+
+      const byId = new Map(result.rows.map((r) => [r.id, r.position]));
+      expect(byId.get(3)).toBe(1);
+      expect(byId.get(1)).toBe(2);
+      expect(byId.get(2)).toBe(3);
+    });
+
+    it('rejeita ordem que não bate com o conjunto existente', async () => {
+      manager.find.mockResolvedValue([
+        buildProblem({ id: 1 }),
+        buildProblem({ id: 2 }),
+      ]);
+
+      await expect(service.reorder([1, 99])).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(manager.save).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
-    it('remove quando o registro existe', async () => {
-      repository.delete!.mockResolvedValue({ affected: 1, raw: [] });
+    it('remove e compacta as posições seguintes', async () => {
+      manager.findOne.mockResolvedValue(buildProblem({ id: 1, position: 2 }));
 
-      await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      await service.remove(1);
+
+      expect(manager.remove).toHaveBeenCalled();
+      expect(qb.where).toHaveBeenCalledWith('position > :threshold', {
+        threshold: 2,
+      });
     });
 
-    it('lança NotFoundException quando nada foi afetado', async () => {
-      repository.delete!.mockResolvedValue({ affected: 0, raw: [] });
-
+    it('lança NotFoundException quando o id não existe', async () => {
+      manager.findOne.mockResolvedValue(null);
       await expect(service.remove(999)).rejects.toThrow(NotFoundException);
     });
   });

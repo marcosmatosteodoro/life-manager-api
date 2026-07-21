@@ -8,6 +8,7 @@ import { ProblemService } from './problem.service';
 const buildProblem = (overrides: Partial<Problem> = {}): Problem => ({
   id: 1,
   title: 'Login lento em produção',
+  position: 1,
   description: null,
   status: 'pendente',
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
@@ -27,6 +28,7 @@ describe('ProblemController', () => {
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      reorder: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -91,5 +93,15 @@ describe('ProblemController', () => {
 
     await expect(controller.remove(1)).resolves.toBeUndefined();
     expect(service.remove).toHaveBeenCalledWith(1);
+  });
+
+  it('reorder repassa orderedIds para o service', async () => {
+    const payload = { count: 2, rows: [buildProblem()] };
+    service.reorder.mockResolvedValue(payload);
+
+    await expect(controller.reorder({ orderedIds: [2, 1] })).resolves.toEqual(
+      payload,
+    );
+    expect(service.reorder).toHaveBeenCalledWith([2, 1]);
   });
 });

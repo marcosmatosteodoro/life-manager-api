@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateProblemDto } from './dto/create-problem.dto';
 import { ProblemListResponseDto } from './dto/problem-list-response.dto';
+import { ReorderProblemDto } from './dto/reorder-problem.dto';
 import { UpdateProblemDto } from './dto/update-problem.dto';
 import { Problem } from './entities/problem.entity';
 import { PROBLEM_STATUSES, type ProblemStatus } from './problem.constants';
@@ -48,6 +49,14 @@ export class ProblemController {
       ? status
       : undefined;
     return this.service.findAll(valid);
+  }
+
+  // Declarado ANTES de :id para não colidir com o param.
+  @Patch('reorder')
+  @ApiOperation({ summary: 'Reordena todos os problemas (position = índice + 1)' })
+  @ApiOkResponse({ type: ProblemListResponseDto })
+  reorder(@Body() dto: ReorderProblemDto) {
+    return this.service.reorder(dto.orderedIds);
   }
 
   @Get(':id')
