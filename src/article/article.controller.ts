@@ -18,7 +18,9 @@ import {
   ApiOperation,
   ApiServiceUnavailableResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { ArticleService } from './article.service';
 import { ArticleListResponseDto } from './dto/article-list-response.dto';
 import { CreateArticleDto } from './dto/create-article.dto';
@@ -37,6 +39,9 @@ export class ArticleController {
     return this.articleService.create(createArticleDto);
   }
 
+  // Endpoint pago (IA): rate limit estrito por usuário — 5/min basta para uso
+  // humano e barra loops/abuso que gerariam custo na OpenAI.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post(':id/correct-summary')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -46,6 +51,7 @@ export class ArticleController {
   @ApiBadRequestResponse({ description: 'Sem resumo ou resumo muito longo' })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   @ApiServiceUnavailableResponse({ description: 'Falha no serviço de IA' })
+  @ApiTooManyRequestsResponse({ description: 'Limite de requisições excedido' })
   correctSummary(@Param('id', ParseIntPipe) id: number) {
     return this.articleService.correctSummary(id);
   }

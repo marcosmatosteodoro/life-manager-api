@@ -4,8 +4,10 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from './current-user.decorator';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -17,12 +19,15 @@ import { Public } from './public.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // Rota pública: rate limit por IP contra força bruta de credenciais (A07).
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Autentica e retorna um token JWT' })
   @ApiOkResponse({ description: 'Token (JWT) + flag de troca de senha' })
   @ApiUnauthorizedResponse({ description: 'Credenciais inválidas' })
+  @ApiTooManyRequestsResponse({ description: 'Muitas tentativas — tente depois' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }

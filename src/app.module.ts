@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import {
@@ -9,6 +11,7 @@ import {
 } from 'nestjs-i18n';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UserThrottlerGuard } from './common/throttler/user-throttler.guard';
 import { WeightModule } from './weight/weight.module';
 import { ArticleModule } from './article/article.module';
 import { CountryModule } from './country/country.module';
@@ -39,6 +42,9 @@ import { HomeModule } from './home/home.module';
       loaderOptions: { path: join(__dirname, '/i18n/'), watch: true },
       resolvers: [AcceptLanguageResolver, new HeaderResolver(['x-lang'])],
     }),
+    // Rate limit global (deny-by-default de abuso): 100 req/min por usuário
+    // (ou IP). Endpoints caros de IA e o login têm limites próprios via @Throttle.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     // Configuração assíncrona: credenciais vêm SEMPRE do ambiente, nunca hardcoded.
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -80,6 +86,11 @@ import { HomeModule } from './home/home.module';
     HomeModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Guard global de rate limit (por usuário/IP). O JwtAuthGuard (AuthModule)
+    // roda antes e anexa req.user, usado como chave do throttler.
+    { provide: APP_GUARD, useClass: UserThrottlerGuard },
+  ],
 })
 export class AppModule {}

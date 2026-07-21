@@ -6,6 +6,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Confia em 1 hop de proxy (ex.: Vercel) para obter o IP real do cliente em
+  // req.ip — usado como chave do rate limit quando não há usuário autenticado.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // CORS restrito à origem do front-end (deny-by-default a outras origens).
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',

@@ -14,7 +14,9 @@ import {
   ApiOperation,
   ApiServiceUnavailableResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { FeedbackListResponseDto } from './dto/feedback-list-response.dto';
 import { Feedback } from './entities/feedback.entity';
@@ -25,6 +27,8 @@ import { FeedbackService } from './feedback.service';
 export class FeedbackController {
   constructor(private readonly service: FeedbackService) {}
 
+  // Endpoint pago (IA): rate limit estrito por usuário (mesmo racional do resumo).
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -32,6 +36,7 @@ export class FeedbackController {
   })
   @ApiOkResponse({ type: Feedback })
   @ApiServiceUnavailableResponse({ description: 'Falha no serviço de IA' })
+  @ApiTooManyRequestsResponse({ description: 'Limite de requisições excedido' })
   generate(@Body() dto: CreateFeedbackDto) {
     return this.service.generate(dto);
   }
