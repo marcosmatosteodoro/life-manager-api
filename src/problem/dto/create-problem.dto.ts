@@ -16,13 +16,13 @@ import {
 } from '../problem.constants';
 
 export class CreateProblemDto {
-  @ApiProperty({ example: 'Login lento em produção' })
+  @ApiProperty({ example: 'Marcar consulta no dentista' })
   @IsString()
   @IsNotEmpty()
   @Length(1, 255)
   title: string;
 
-  @ApiPropertyOptional({ example: 'Investigar consultas N+1 no dashboard.' })
+  @ApiPropertyOptional({ example: 'Escolher o convênio e ligar para agendar.' })
   @IsOptional()
   @IsString()
   description?: string;

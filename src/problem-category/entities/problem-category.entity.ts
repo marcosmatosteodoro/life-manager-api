@@ -14,7 +14,7 @@ export class ProblemCategory {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ example: 'Bug' })
+  @ApiProperty({ example: 'Saúde' })
   @Column({ type: 'varchar', length: 255, nullable: false })
   name: string;
 

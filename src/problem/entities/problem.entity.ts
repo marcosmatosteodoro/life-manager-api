@@ -22,7 +22,7 @@ export class Problem {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ example: 'Login lento em produção' })
+  @ApiProperty({ example: 'Marcar consulta no dentista' })
   @Column({ type: 'varchar', length: 255, nullable: false })
   title: string;
 
@@ -31,7 +31,7 @@ export class Problem {
   @Column({ type: 'int', nullable: false })
   position: number;
 
-  @ApiProperty({ example: 'Investigar consultas N+1 no dashboard.', nullable: true })
+  @ApiProperty({ example: 'Escolher o convênio e ligar para agendar.', nullable: true })
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
