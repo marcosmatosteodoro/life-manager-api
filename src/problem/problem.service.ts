@@ -11,7 +11,11 @@ import { CreateProblemDto } from './dto/create-problem.dto';
 import { ProblemListResponseDto } from './dto/problem-list-response.dto';
 import { UpdateProblemDto } from './dto/update-problem.dto';
 import { Problem } from './entities/problem.entity';
-import { DEFAULT_STATUS, type ProblemStatus } from './problem.constants';
+import {
+  DEFAULT_PRIORITY,
+  DEFAULT_STATUS,
+  type ProblemStatus,
+} from './problem.constants';
 
 @Injectable()
 export class ProblemService {
@@ -30,6 +34,7 @@ export class ProblemService {
       title: dto.title,
       description: dto.description ?? null,
       status: dto.status ?? DEFAULT_STATUS,
+      priority: dto.priority ?? DEFAULT_PRIORITY,
       position: next,
       categoryId: dto.categoryId ?? null,
       creatorId: dto.creatorId ?? null,
@@ -66,6 +71,7 @@ export class ProblemService {
       problem.description = dto.description ?? null;
     }
     if (dto.status !== undefined) problem.status = dto.status;
+    if (dto.priority !== undefined) problem.priority = dto.priority;
     if (dto.categoryId !== undefined) {
       if (dto.categoryId != null) await this.ensureCategoryExists(dto.categoryId);
       problem.categoryId = dto.categoryId;

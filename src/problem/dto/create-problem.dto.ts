@@ -10,8 +10,11 @@ import {
   ValidateIf,
 } from 'class-validator';
 import {
+  DEFAULT_PRIORITY,
   DEFAULT_STATUS,
+  PROBLEM_PRIORITIES,
   PROBLEM_STATUSES,
+  type ProblemPriority,
   type ProblemStatus,
 } from '../problem.constants';
 
@@ -31,6 +34,11 @@ export class CreateProblemDto {
   @IsOptional()
   @IsIn(PROBLEM_STATUSES)
   status?: ProblemStatus;
+
+  @ApiPropertyOptional({ enum: PROBLEM_PRIORITIES, default: DEFAULT_PRIORITY })
+  @IsOptional()
+  @IsIn(PROBLEM_PRIORITIES)
+  priority?: ProblemPriority;
 
   // categoryId opcional; `null` limpa a categoria (não é obrigatória).
   @ApiPropertyOptional({ example: 1, nullable: true, description: 'Id da categoria (FK)' })

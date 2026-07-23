@@ -7,10 +7,11 @@ import { ProblemService } from './problem.service';
 
 const buildProblem = (overrides: Partial<Problem> = {}): Problem => ({
   id: 1,
-  title: 'Login lento em produção',
+  title: 'Marcar consulta no dentista',
   position: 1,
   description: null,
   status: 'pendente',
+  priority: 'media',
   categoryId: null,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),

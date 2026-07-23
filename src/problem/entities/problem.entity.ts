@@ -10,8 +10,11 @@ import {
 } from 'typeorm';
 import { ProblemCategory } from '../../problem-category/entities/problem-category.entity';
 import {
+  DEFAULT_PRIORITY,
   DEFAULT_STATUS,
+  PROBLEM_PRIORITIES,
   PROBLEM_STATUSES,
+  type ProblemPriority,
   type ProblemStatus,
 } from '../problem.constants';
 
@@ -43,6 +46,15 @@ export class Problem {
     default: DEFAULT_STATUS,
   })
   status: ProblemStatus;
+
+  @ApiProperty({ enum: PROBLEM_PRIORITIES, example: DEFAULT_PRIORITY })
+  @Column({
+    type: 'varchar',
+    length: 16,
+    nullable: false,
+    default: DEFAULT_PRIORITY,
+  })
+  priority: ProblemPriority;
 
   @ApiProperty()
   @CreateDateColumn({ name: 'created_at' })

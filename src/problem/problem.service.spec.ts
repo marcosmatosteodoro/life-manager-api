@@ -18,10 +18,11 @@ const makeQb = (raw: { max: number | null } = { max: null }) => ({
 
 const buildProblem = (o: Partial<Problem> = {}): Problem => ({
   id: 1,
-  title: 'Login lento em produção',
+  title: 'Marcar consulta no dentista',
   position: 1,
   description: null,
   status: 'pendente',
+  priority: 'media',
   categoryId: null,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
@@ -91,8 +92,17 @@ describe('ProblemService', () => {
       expect(result).toMatchObject({
         title: 'Novo',
         status: 'pendente',
+        priority: 'media', // default
         position: 4,
       });
+    });
+
+    it('respeita a prioridade enviada', async () => {
+      qb.getRawOne.mockResolvedValue({ max: 0 });
+
+      const result = await service.create({ title: 'X', priority: 'urgente' });
+
+      expect(result).toMatchObject({ priority: 'urgente' });
     });
 
     it('primeira criação recebe position 1 e respeita o status enviado', async () => {
@@ -184,12 +194,14 @@ describe('ProblemService', () => {
         title: 'Novo título',
         description: 'nova desc',
         status: 'concluido',
+        priority: 'alta',
       });
 
       expect(result).toMatchObject({
         title: 'Novo título',
         description: 'nova desc',
         status: 'concluido',
+        priority: 'alta',
       });
     });
 
