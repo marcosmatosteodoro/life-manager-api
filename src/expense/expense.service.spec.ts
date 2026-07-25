@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { AiService } from '../ai/ai.service';
 import { ExpenseCategory } from '../expense-category/entities/expense-category.entity';
 import { ExpenseAudio } from './entities/expense-audio.entity';
 import { Expense } from './entities/expense.entity';
@@ -48,6 +49,7 @@ describe('ExpenseService', () => {
     save: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
+  let ai: { complete: jest.Mock };
 
   beforeEach(async () => {
     repo = {
@@ -72,12 +74,15 @@ describe('ExpenseService', () => {
       createQueryBuilder: jest.fn(() => makeCategoryQb(null)),
     };
 
+    ai = { complete: jest.fn().mockResolvedValue('<p>análise</p>') };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ExpenseService,
         { provide: getRepositoryToken(Expense), useValue: repo },
         { provide: getRepositoryToken(ExpenseAudio), useValue: audioRepo },
         { provide: getRepositoryToken(ExpenseCategory), useValue: categoryRepo },
+        { provide: AiService, useValue: ai },
       ],
     }).compile();
     service = module.get(ExpenseService);
@@ -164,6 +169,28 @@ describe('ExpenseService', () => {
     it('removeAudio lança NotFound quando nada foi apagado', async () => {
       audioRepo.delete.mockResolvedValue({ affected: 0 });
       await expect(service.removeAudio(1)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('analyze', () => {
+    it('agrega o período, chama a IA e devolve totais + análise', async () => {
+      repo.find.mockResolvedValue([
+        { value: 100, type: 'debito', date: '2026-07-02', title: 'A', category: { name: 'Mercado' }, installments: null },
+        { value: 300, type: 'credito', date: '2026-07-05', title: 'B', category: null, installments: 3 },
+      ]);
+
+      const result = await service.analyze({ from: '2026-07-01', to: '2026-07-31' });
+
+      expect(ai.complete).toHaveBeenCalled();
+      expect(result.total).toBe(400);
+      expect(result.count).toBe(2);
+      // Maior primeiro (300 -> categoria "Sem categoria").
+      expect(result.byCategory[0]).toEqual({
+        name: 'Sem categoria',
+        total: 300,
+        count: 1,
+      });
+      expect(result.analysis).toBe('<p>análise</p>');
     });
   });
 

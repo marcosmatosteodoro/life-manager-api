@@ -15,9 +15,14 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiServiceUnavailableResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { AnalyzeExpenseDto } from './dto/analyze-expense.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { ExpenseAnalysisResponseDto } from './dto/expense-analysis-response.dto';
 import { ExpenseAudioResponseDto } from './dto/expense-audio-response.dto';
 import { ExpenseListResponseDto } from './dto/expense-list-response.dto';
 import { ExpenseSummaryResponseDto } from './dto/expense-summary-response.dto';
@@ -52,6 +57,17 @@ export class ExpenseController {
   @ApiOkResponse({ type: ExpenseSummaryResponseDto })
   summary() {
     return this.service.summary();
+  }
+
+  // Endpoint pago (IA): rate limit estrito por usuário.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('analysis')
+  @ApiOperation({ summary: 'Análise dos gastos do período via IA' })
+  @ApiOkResponse({ type: ExpenseAnalysisResponseDto })
+  @ApiServiceUnavailableResponse({ description: 'Falha no serviço de IA' })
+  @ApiTooManyRequestsResponse({ description: 'Limite de requisições excedido' })
+  analyze(@Body() dto: AnalyzeExpenseDto) {
+    return this.service.analyze(dto);
   }
 
   @Get(':id')

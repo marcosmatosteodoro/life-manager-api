@@ -8,6 +8,7 @@ describe('ExpenseController', () => {
     create: jest.fn(),
     findAll: jest.fn(),
     summary: jest.fn(),
+    analyze: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
@@ -37,6 +38,13 @@ describe('ExpenseController', () => {
     service.summary.mockResolvedValue({ month: '2026-07' });
     await controller.summary();
     expect(service.summary).toHaveBeenCalledTimes(1);
+  });
+
+  it('analyze repassa o período', async () => {
+    const dto = { from: '2026-07-01', to: '2026-07-31' };
+    service.analyze.mockResolvedValue({ analysis: '<p>x</p>' });
+    await controller.analyze(dto);
+    expect(service.analyze).toHaveBeenCalledWith(dto);
   });
 
   it('rotas por id repassam o id/dto', async () => {

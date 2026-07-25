@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AiModule } from '../ai/ai.module';
 import { ExpenseCategory } from '../expense-category/entities/expense-category.entity';
 import { ExpenseController } from './expense.controller';
 import { ExpenseService } from './expense.service';
@@ -8,6 +9,7 @@ import { Expense } from './entities/expense.entity';
 
 @Module({
   imports: [
+    AiModule,
     TypeOrmModule.forFeature([Expense, ExpenseAudio, ExpenseCategory]),
   ],
   providers: [ExpenseService],

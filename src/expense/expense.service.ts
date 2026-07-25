@@ -1,14 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Between, In, Repository } from 'typeorm';
+import { AiService } from '../ai/ai.service';
 import { ExpenseCategory } from '../expense-category/entities/expense-category.entity';
 import { tr } from '../i18n/translate';
+import { AnalyzeExpenseDto } from './dto/analyze-expense.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { ExpenseAnalysisResponseDto } from './dto/expense-analysis-response.dto';
 import { ExpenseAudioResponseDto } from './dto/expense-audio-response.dto';
 import { ExpenseListResponseDto } from './dto/expense-list-response.dto';
 import { ExpenseSummaryResponseDto } from './dto/expense-summary-response.dto';
 import { SetExpenseAudioDto } from './dto/set-expense-audio.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import {
+  buildExpenseAnalysisInput,
+  EXPENSE_ANALYSIS_SYSTEM,
+} from './prompts/expense-analysis.prompt';
 import { ExpenseAudio } from './entities/expense-audio.entity';
 import { Expense } from './entities/expense.entity';
 
@@ -21,6 +28,7 @@ export class ExpenseService {
     private readonly audioRepository: Repository<ExpenseAudio>,
     @InjectRepository(ExpenseCategory)
     private readonly categoryRepository: Repository<ExpenseCategory>,
+    private readonly aiService: AiService,
   ) {}
 
   async create(dto: CreateExpenseDto): Promise<Expense> {
@@ -143,6 +151,73 @@ export class ExpenseService {
     };
   }
 
+  /** Análise dos gastos do período via IA (não persiste; chamada paga). */
+  async analyze(dto: AnalyzeExpenseDto): Promise<ExpenseAnalysisResponseDto> {
+    const expenses = await this.repository.find({
+      where: { date: Between(dto.from, dto.to) },
+      relations: { category: true },
+      order: { date: 'ASC' },
+    });
+
+    const total = this.round(expenses.reduce((s, e) => s + e.value, 0));
+    const days = Math.max(1, this.daysBetween(dto.from, dto.to) + 1);
+
+    const byCategory = this.groupTotals(
+      expenses,
+      (e) => e.category?.name ?? 'Sem categoria',
+    );
+    const byType = this.groupTotals(expenses, (e) => e.type);
+
+    const topExpenses = [...expenses]
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8)
+      .map((e) => ({
+        titulo: e.title,
+        valor: e.value,
+        data: e.date,
+        categoria: e.category?.name ?? null,
+        tipo: e.type,
+        parcelas: e.installments,
+      }));
+
+    const data = {
+      periodo: { de: dto.from, ate: dto.to, dias: days },
+      total,
+      quantidade: expenses.length,
+      mediaPorDia: this.round(total / days),
+      porCategoria: byCategory.map((c) => ({
+        categoria: c.key,
+        total: c.total,
+        qtd: c.count,
+      })),
+      porTipo: byType.map((tt) => ({ tipo: tt.key, total: tt.total, qtd: tt.count })),
+      maioresGastos: topExpenses,
+    };
+
+    const analysis = await this.aiService.complete({
+      system: EXPENSE_ANALYSIS_SYSTEM,
+      user: buildExpenseAnalysisInput(dto.from, dto.to, data),
+    });
+
+    return {
+      from: dto.from,
+      to: dto.to,
+      total,
+      count: expenses.length,
+      byCategory: byCategory.map((c) => ({
+        name: c.key,
+        total: c.total,
+        count: c.count,
+      })),
+      byType: byType.map((tt) => ({
+        type: tt.key,
+        total: tt.total,
+        count: tt.count,
+      })),
+      analysis,
+    };
+  }
+
   // ----- Áudio (descrição em voz) -----
 
   async getAudio(id: number): Promise<ExpenseAudioResponseDto> {
@@ -226,5 +301,33 @@ export class ExpenseService {
   private monthStart(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+  }
+
+  private round(n: number): number {
+    return Math.round(n * 100) / 100;
+  }
+
+  /** Agrupa por uma chave, somando valores e contando, ordenado por total DESC. */
+  private groupTotals(
+    expenses: Expense[],
+    keyOf: (e: Expense) => string,
+  ): { key: string; total: number; count: number }[] {
+    const map = new Map<string, { total: number; count: number }>();
+    for (const e of expenses) {
+      const key = keyOf(e);
+      const acc = map.get(key) ?? { total: 0, count: 0 };
+      acc.total += e.value;
+      acc.count += 1;
+      map.set(key, acc);
+    }
+    return [...map.entries()]
+      .map(([key, v]) => ({ key, total: this.round(v.total), count: v.count }))
+      .sort((a, b) => b.total - a.total);
+  }
+
+  private daysBetween(from: string, to: string): number {
+    const a = new Date(`${from}T00:00:00`);
+    const b = new Date(`${to}T00:00:00`);
+    return Math.round((b.getTime() - a.getTime()) / 86_400_000);
   }
 }
