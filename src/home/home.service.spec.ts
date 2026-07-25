@@ -3,6 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Apply } from '../apply/entities/apply.entity';
 import { Article } from '../article/entities/article.entity';
 import { ArticleStatus } from '../article/enums/article-status.enum';
+import { Dog } from '../dog/entities/dog.entity';
+import { DogWeight } from '../dog-weight/entities/dog-weight.entity';
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { TodoCheckService } from '../todo/todo-check.service';
@@ -23,6 +25,8 @@ describe('HomeService', () => {
   const flashCardRepo = repoMock();
   const groupRepo = repoMock();
   const applyRepo = repoMock();
+  const dogRepo = repoMock();
+  const dogWeightRepo = repoMock();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -34,6 +38,8 @@ describe('HomeService', () => {
         { provide: getRepositoryToken(FlashCard), useValue: flashCardRepo },
         { provide: getRepositoryToken(FlashCardGroup), useValue: groupRepo },
         { provide: getRepositoryToken(Apply), useValue: applyRepo },
+        { provide: getRepositoryToken(Dog), useValue: dogRepo },
+        { provide: getRepositoryToken(DogWeight), useValue: dogWeightRepo },
       ],
     }).compile();
     service = module.get(HomeService);
@@ -58,6 +64,9 @@ describe('HomeService', () => {
     groupRepo.count.mockResolvedValue(8);
     // 1ª chamada = total; 2ª = candidaturas de hoje.
     applyRepo.count.mockResolvedValueOnce(12).mockResolvedValueOnce(2);
+    // 2 cães, só 1 pesado no mês → precisa pesar.
+    dogRepo.find.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    dogWeightRepo.find.mockResolvedValue([{ dogId: 1 }]);
 
     const result = await service.getDashboard();
 
@@ -67,6 +76,7 @@ describe('HomeService', () => {
       todos: { done: 1, total: 3 },
       study: { todayStatus: ArticleStatus.SUMMARY_IN_PROGRESS },
       flashcards: { totalCards: 120, groupCount: 8 },
+      dogs: { needsWeighing: true },
       appliesCount: 12,
       appliesToday: 2,
     });
@@ -80,10 +90,13 @@ describe('HomeService', () => {
     flashCardRepo.count.mockResolvedValue(0);
     groupRepo.count.mockResolvedValue(0);
     applyRepo.count.mockResolvedValue(0);
+    dogRepo.find.mockResolvedValue([]);
+    dogWeightRepo.find.mockResolvedValue([]);
 
     const result = await service.getDashboard();
 
     expect(result.streak).toBe(0);
+    expect(result.dogs).toEqual({ needsWeighing: false });
     expect(result.weight).toEqual({ latest: null, loggedThisWeek: false });
     expect(result.todos).toEqual({ done: 0, total: 0 });
     expect(result.study.todayStatus).toBeNull();

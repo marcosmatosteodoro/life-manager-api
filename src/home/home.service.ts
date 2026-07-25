@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 import { Apply } from '../apply/entities/apply.entity';
 import { Article } from '../article/entities/article.entity';
+import { Dog } from '../dog/entities/dog.entity';
+import { DogWeight } from '../dog-weight/entities/dog-weight.entity';
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { TodoCheckService } from '../todo/todo-check.service';
@@ -23,12 +25,17 @@ export class HomeService {
     private readonly groupRepository: Repository<FlashCardGroup>,
     @InjectRepository(Apply)
     private readonly applyRepository: Repository<Apply>,
+    @InjectRepository(Dog)
+    private readonly dogRepository: Repository<Dog>,
+    @InjectRepository(DogWeight)
+    private readonly dogWeightRepository: Repository<DogWeight>,
   ) {}
 
   /** Agrega, numa só resposta, tudo que a Home exibe. */
   async getDashboard(): Promise<DashboardResponseDto> {
     const today = this.dayStr(new Date());
     const weekStart = this.startOfWeek();
+    const monthStart = this.startOfMonth();
 
     const [
       todayChecks,
@@ -39,6 +46,8 @@ export class HomeService {
       groupCount,
       appliesCount,
       appliesToday,
+      dogs,
+      dogWeightsThisMonth,
     ] = await Promise.all([
       this.todoCheckService.today(), // garante/retorna os checks de hoje
       this.articleRepository.find({
@@ -56,9 +65,19 @@ export class HomeService {
       this.groupRepository.count(),
       this.applyRepository.count(),
       this.applyRepository.count({ where: { date: today } }),
+      this.dogRepository.find({ select: { id: true } }),
+      this.dogWeightRepository.find({
+        select: { dogId: true },
+        where: { date: MoreThanOrEqual(monthStart) },
+      }),
     ]);
 
     const done = todayChecks.filter((c) => c.checked).length;
+
+    // Precisa pesar se há cães e algum ainda não foi pesado neste mês.
+    const weighedDogIds = new Set(dogWeightsThisMonth.map((w) => w.dogId));
+    const needsDogWeighing =
+      dogs.length > 0 && dogs.some((d) => !weighedDogIds.has(d.id));
 
     const todayArticle = articles.find(
       (a) => this.dayStr(a.createdAt) === today,
@@ -74,6 +93,7 @@ export class HomeService {
       todos: { done, total: todayChecks.length },
       study: { todayStatus: todayArticle?.status ?? null },
       flashcards: { totalCards, groupCount },
+      dogs: { needsWeighing: needsDogWeighing },
       appliesCount,
       appliesToday,
     };
@@ -90,6 +110,13 @@ export class HomeService {
     const d = new Date();
     const daysSinceMonday = (d.getDay() + 6) % 7; // 0=Dom..6=Sáb → dias após segunda
     d.setDate(d.getDate() - daysSinceMonday);
+    return this.dayStr(d);
+  }
+
+  /** Primeiro dia do mês corrente em YYYY-MM-DD local. */
+  private startOfMonth(): string {
+    const d = new Date();
+    d.setDate(1);
     return this.dayStr(d);
   }
 

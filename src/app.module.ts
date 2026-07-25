@@ -30,6 +30,11 @@ import { UserModule } from './user/user.module';
 import { BacklogModule } from './backlog/backlog.module';
 import { ProblemCategoryModule } from './problem-category/problem-category.module';
 import { ProblemModule } from './problem/problem.module';
+import { DogModule } from './dog/dog.module';
+import { DogWalkLocationModule } from './dog-walk-location/dog-walk-location.module';
+import { DogWalkModule } from './dog-walk/dog-walk.module';
+import { DogWeightModule } from './dog-weight/dog-weight.module';
+import { DogDashboardModule } from './dog-dashboard/dog-dashboard.module';
 import { HomeModule } from './home/home.module';
 
 @Module({
@@ -86,6 +91,11 @@ import { HomeModule } from './home/home.module';
     BacklogModule,
     ProblemCategoryModule,
     ProblemModule,
+    DogModule,
+    DogWalkLocationModule,
+    DogWalkModule,
+    DogWeightModule,
+    DogDashboardModule,
     HomeModule,
   ],
   controllers: [AppController],

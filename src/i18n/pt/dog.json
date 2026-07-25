@@ -1,0 +1,7 @@
+{
+  "notFound": "Cão #{id} não encontrado",
+  "locationNotFound": "Local de passeio #{id} não encontrado",
+  "weightNotFound": "Pesagem #{id} não encontrada",
+  "walkNotFound": "Passeio #{id} não encontrado",
+  "someDogNotFound": "Um ou mais cães selecionados não foram encontrados"
+}

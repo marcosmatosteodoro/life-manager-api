@@ -37,6 +37,14 @@ class DashboardFlashcardsDto {
   groupCount: number;
 }
 
+class DashboardDogsDto {
+  @ApiProperty({
+    example: true,
+    description: 'Algum cão sem pesagem neste mês',
+  })
+  needsWeighing: boolean;
+}
+
 /** Tudo que a Home precisa, agregado numa única resposta. */
 export class DashboardResponseDto {
   @ApiProperty({ example: 3, description: 'Dias seguidos com estudo' })
@@ -53,6 +61,9 @@ export class DashboardResponseDto {
 
   @ApiProperty({ type: DashboardFlashcardsDto })
   flashcards: DashboardFlashcardsDto;
+
+  @ApiProperty({ type: DashboardDogsDto })
+  dogs: DashboardDogsDto;
 
   @ApiProperty({ example: 12 })
   appliesCount: number;

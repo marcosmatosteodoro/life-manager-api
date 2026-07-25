@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Apply } from '../apply/entities/apply.entity';
 import { Article } from '../article/entities/article.entity';
+import { Dog } from '../dog/entities/dog.entity';
+import { DogWeight } from '../dog-weight/entities/dog-weight.entity';
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { TodoModule } from '../todo/todo.module';
@@ -19,6 +21,8 @@ import { HomeService } from './home.service';
       FlashCard,
       FlashCardGroup,
       Apply,
+      Dog,
+      DogWeight,
     ]),
   ],
   providers: [HomeService],
