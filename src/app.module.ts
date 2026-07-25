@@ -37,6 +37,7 @@ import { DogWeightModule } from './dog-weight/dog-weight.module';
 import { DogDashboardModule } from './dog-dashboard/dog-dashboard.module';
 import { ExpenseCategoryModule } from './expense-category/expense-category.module';
 import { ExpenseModule } from './expense/expense.module';
+import { FixedExpenseModule } from './fixed-expense/fixed-expense.module';
 import { HomeModule } from './home/home.module';
 
 @Module({
@@ -100,6 +101,7 @@ import { HomeModule } from './home/home.module';
     DogDashboardModule,
     ExpenseCategoryModule,
     ExpenseModule,
+    FixedExpenseModule,
     HomeModule,
   ],
   controllers: [AppController],
