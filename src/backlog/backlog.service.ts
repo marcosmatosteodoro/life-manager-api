@@ -29,7 +29,8 @@ export class BacklogService {
     const next = (await this.maxPendingPosition(this.repository.manager)) + 1;
     const item = this.repository.create({
       name: dto.name,
-      description: dto.description ?? null,
+      // Sem descrição → usa o nome como descrição.
+      description: dto.description?.trim() ? dto.description : dto.name,
       status: 'pendente',
       position: next,
     });
@@ -132,6 +133,8 @@ export class BacklogService {
     const item = await this.findOne(id);
     if (dto.name !== undefined) item.name = dto.name;
     if (dto.description !== undefined) item.description = dto.description;
+    // Sem descrição → usa o nome como descrição.
+    if (!item.description?.trim()) item.description = item.name;
     return this.repository.save(item);
   }
 

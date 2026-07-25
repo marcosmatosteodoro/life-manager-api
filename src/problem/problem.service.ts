@@ -34,7 +34,8 @@ export class ProblemService {
     const next = (await this.maxPosition(this.repository.manager, userId)) + 1;
     const problem = this.repository.create({
       title: dto.title,
-      description: dto.description ?? null,
+      // Sem descrição → usa o título como descrição.
+      description: dto.description?.trim() ? dto.description : dto.title,
       status: dto.status ?? DEFAULT_STATUS,
       priority: dto.priority ?? DEFAULT_PRIORITY,
       position: next,
@@ -87,6 +88,8 @@ export class ProblemService {
       }
       problem.categoryId = dto.categoryId;
     }
+    // Sem descrição → usa o título como descrição.
+    if (!problem.description?.trim()) problem.description = problem.title;
     return this.repository.save(problem);
   }
 
