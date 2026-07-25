@@ -63,14 +63,4 @@ export class CreateArticleDto {
   @IsOptional()
   @IsInt()
   score?: number;
-
-  // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Id do criador (opcional até haver autenticação)',
-  })
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  creatorId?: number;
 }

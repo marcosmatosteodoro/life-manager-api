@@ -51,14 +51,4 @@ export class CreateProblemDto {
   @IsInt()
   @IsPositive()
   categoryId?: number | null;
-
-  // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Id do criador (opcional até haver autenticação)',
-  })
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  creatorId?: number;
 }

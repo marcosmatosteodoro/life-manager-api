@@ -27,14 +27,4 @@ export class CreateTodoCheckDto {
   @IsOptional()
   @IsBoolean()
   checked?: boolean;
-
-  // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Id do criador (opcional até haver autenticação)',
-  })
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  creatorId?: number;
 }

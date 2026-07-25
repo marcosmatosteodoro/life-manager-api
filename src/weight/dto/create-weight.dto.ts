@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
-  IsInt,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -33,14 +32,4 @@ export class CreateWeightDto {
     message: 'time deve estar no formato HH:MM ou HH:MM:SS',
   })
   time?: string;
-
-  // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Id do criador (opcional até haver autenticação)',
-  })
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  creatorId?: number;
 }

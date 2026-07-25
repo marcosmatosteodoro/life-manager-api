@@ -110,6 +110,8 @@ export class UserService {
         name: dto.name,
         passwordHash: await hashPassword(dto.password),
         role: dto.role ?? DEFAULT_USER_ROLE,
+        // Senha definida pelo admin é provisória: força a troca no 1º login.
+        mustChangePassword: true,
       }),
     );
     return UserResponseDto.from(user);

@@ -6,7 +6,6 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
-  IsPositive,
   IsString,
   Max,
   Min,
@@ -57,14 +56,4 @@ export class CreateTodoDto {
   @IsOptional()
   @IsString()
   tag?: string;
-
-  // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Id do criador (opcional até haver autenticação)',
-  })
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  creatorId?: number;
 }

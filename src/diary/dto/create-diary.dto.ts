@@ -1,13 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsEnum,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsPositive,
-  IsString,
-} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { DiaryType } from '../enums/diary-type.enum';
 
 export class CreateDiaryDto {
@@ -29,14 +21,4 @@ export class CreateDiaryDto {
   @ApiProperty({ enum: DiaryType, example: DiaryType.DAILY })
   @IsEnum(DiaryType)
   type: DiaryType;
-
-  // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Id do criador (opcional até haver autenticação)',
-  })
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  creatorId?: number;
 }

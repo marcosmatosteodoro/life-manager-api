@@ -55,21 +55,4 @@ export class CreateFlashCardDto {
     }),
   })
   flashCardGroupId: number;
-
-  // creatorId opcional enquanto não há autenticação.
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Id do criador (opcional até haver autenticação)',
-  })
-  @IsOptional()
-  @IsInt({
-    message: i18nValidationMessage('validation.isInt', { property: 'criador' }),
-  })
-  @IsPositive({
-    message: i18nValidationMessage('validation.min', {
-      property: 'criador',
-      constraints: [1],
-    }),
-  })
-  creatorId?: number;
 }
