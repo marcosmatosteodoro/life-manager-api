@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import {
   ApiNoContentResponse,
@@ -17,6 +18,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { PhotoResponseDto } from '../common/dto/photo-response.dto';
+import { SetPhotoDto } from '../common/dto/set-photo.dto';
 import { CreateDogDto } from './dto/create-dog.dto';
 import { DogListResponseDto } from './dto/dog-list-response.dto';
 import { UpdateDogDto } from './dto/update-dog.dto';
@@ -65,5 +68,32 @@ export class DogController {
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
+  }
+
+  // ----- Foto de perfil -----
+
+  @Get(':id/photo')
+  @ApiOperation({ summary: 'Busca a foto de perfil do cão (base64)' })
+  @ApiOkResponse({ type: PhotoResponseDto })
+  @ApiNotFoundResponse({ description: 'Cão sem foto de perfil' })
+  getPhoto(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getPhoto(id);
+  }
+
+  @Put(':id/photo')
+  @ApiOperation({ summary: 'Define/atualiza a foto de perfil do cão' })
+  @ApiOkResponse({ type: PhotoResponseDto })
+  @ApiNotFoundResponse({ description: 'Cão não encontrado' })
+  setPhoto(@Param('id', ParseIntPipe) id: number, @Body() dto: SetPhotoDto) {
+    return this.service.setPhoto(id, dto);
+  }
+
+  @Delete(':id/photo')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a foto de perfil do cão' })
+  @ApiNoContentResponse({ description: 'Removido com sucesso' })
+  @ApiNotFoundResponse({ description: 'Cão sem foto de perfil' })
+  removePhoto(@Param('id', ParseIntPipe) id: number) {
+    return this.service.removePhoto(id);
   }
 }

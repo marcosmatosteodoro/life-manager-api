@@ -5,9 +5,17 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
+import { PhotoResponseDto } from '../common/dto/photo-response.dto';
+import { SetPhotoDto } from '../common/dto/set-photo.dto';
+import {
+  delProfilePhoto,
+  putProfilePhoto,
+  readProfilePhotoBase64,
+} from '../common/photo-blob.storage';
 import { tr } from '../i18n/translate';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { UserPhoto } from './entities/user-photo.entity';
 import { User } from './entities/user.entity';
 
 @Injectable()
@@ -15,6 +23,8 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly repository: Repository<User>,
+    @InjectRepository(UserPhoto)
+    private readonly photoRepository: Repository<UserPhoto>,
   ) {}
 
   /** Usado pelo auth (login). Retorna a entidade crua (com hash). */
@@ -33,7 +43,8 @@ export class UserService {
 
   /** Perfil do usuário logado (sem passwordHash). */
   async getMe(id: number): Promise<UserResponseDto> {
-    return UserResponseDto.from(await this.findByIdOrThrow(id));
+    const user = await this.findByIdOrThrow(id);
+    return UserResponseDto.from(user, await this.hasPhoto(id));
   }
 
   /** Atualiza o próprio perfil; valida unicidade de username/email. */
@@ -54,7 +65,8 @@ export class UserService {
     if (dto.language !== undefined) user.language = dto.language;
     if (dto.customColors !== undefined) user.customColors = dto.customColors;
 
-    return UserResponseDto.from(await this.repository.save(user));
+    const saved = await this.repository.save(user);
+    return UserResponseDto.from(saved, await this.hasPhoto(id));
   }
 
   /** Grava novo hash de senha e desliga a obrigatoriedade de troca. */
@@ -72,6 +84,61 @@ export class UserService {
 
   count(): Promise<number> {
     return this.repository.count();
+  }
+
+  // ----- Foto de perfil (Vercel Blob privado; Postgres guarda a referência) -----
+
+  /** Foto de perfil em base64 (lida do Blob sob demanda). */
+  async getPhoto(id: number): Promise<PhotoResponseDto> {
+    const photo = await this.photoRepository.findOne({ where: { userId: id } });
+    if (!photo) {
+      throw new NotFoundException(tr('user.photoNotFound', { id }));
+    }
+    return {
+      data: await readProfilePhotoBase64(photo.pathname),
+      mimeType: photo.mimeType,
+    };
+  }
+
+  /** Define/substitui a foto de perfil (apaga o blob anterior, se houver). */
+  async setPhoto(id: number, dto: SetPhotoDto): Promise<PhotoResponseDto> {
+    await this.findByIdOrThrow(id); // garante 404 se o usuário não existe
+    const existing = await this.photoRepository.findOne({
+      where: { userId: id },
+    });
+    const stored = await putProfilePhoto('users', id, dto.data, dto.mimeType);
+    if (existing) {
+      await delProfilePhoto(existing.url);
+      await this.photoRepository.update(existing.id, {
+        pathname: stored.pathname,
+        url: stored.url,
+        mimeType: dto.mimeType,
+      });
+    } else {
+      await this.photoRepository.save(
+        this.photoRepository.create({
+          userId: id,
+          pathname: stored.pathname,
+          url: stored.url,
+          mimeType: dto.mimeType,
+        }),
+      );
+    }
+    return { data: dto.data, mimeType: dto.mimeType };
+  }
+
+  async removePhoto(id: number): Promise<void> {
+    const photo = await this.photoRepository.findOne({ where: { userId: id } });
+    if (!photo) {
+      throw new NotFoundException(tr('user.photoNotFound', { id }));
+    }
+    await delProfilePhoto(photo.url);
+    await this.photoRepository.delete(photo.id);
+  }
+
+  /** Existe foto de perfil? (sem carregar o binário). */
+  private async hasPhoto(id: number): Promise<boolean> {
+    return (await this.photoRepository.count({ where: { userId: id } })) > 0;
   }
 
   /** Garante que nenhum OUTRO usuário já usa o valor do campo único. */

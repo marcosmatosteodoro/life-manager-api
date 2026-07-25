@@ -19,8 +19,9 @@ export class UserResponseDto {
   @ApiProperty({ enum: LANGUAGES }) language: Language;
   @ApiProperty({ nullable: true }) customColors: CustomColors | null;
   @ApiProperty() mustChangePassword: boolean;
+  @ApiProperty({ example: true }) hasPhoto: boolean;
 
-  static from(user: User): UserResponseDto {
+  static from(user: User, hasPhoto = false): UserResponseDto {
     return {
       id: user.id,
       username: user.username,
@@ -31,6 +32,7 @@ export class UserResponseDto {
       language: user.language,
       customColors: user.customColors,
       mustChangePassword: user.mustChangePassword,
+      hasPhoto,
     };
   }
 }

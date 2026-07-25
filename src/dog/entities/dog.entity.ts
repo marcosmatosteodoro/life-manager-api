@@ -38,4 +38,9 @@ export class Dog {
   @ApiProperty({ example: 1, nullable: true })
   @Column({ name: 'creator_id', type: 'int', nullable: true })
   creatorId: number | null;
+
+  // Não-persistido: indica se há foto de perfil (setado no service, sem carregar
+  // o binário). O base64 vem sob demanda em GET /dog/:id/photo.
+  @ApiProperty({ example: true })
+  hasPhoto?: boolean;
 }

@@ -1,6 +1,23 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Put,
+} from '@nestjs/common';
+import {
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { PhotoResponseDto } from '../common/dto/photo-response.dto';
+import { SetPhotoDto } from '../common/dto/set-photo.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserService } from './user.service';
@@ -22,5 +39,31 @@ export class UserController {
   @ApiOkResponse({ type: UserResponseDto })
   updateMe(@CurrentUser() userId: number, @Body() dto: UpdateMeDto) {
     return this.service.updateMe(userId, dto);
+  }
+
+  // ----- Foto de perfil -----
+
+  @Get('photo')
+  @ApiOperation({ summary: 'Busca a foto de perfil do usuário (base64)' })
+  @ApiOkResponse({ type: PhotoResponseDto })
+  @ApiNotFoundResponse({ description: 'Usuário sem foto de perfil' })
+  getPhoto(@CurrentUser() userId: number) {
+    return this.service.getPhoto(userId);
+  }
+
+  @Put('photo')
+  @ApiOperation({ summary: 'Define/atualiza a foto de perfil do usuário' })
+  @ApiOkResponse({ type: PhotoResponseDto })
+  setPhoto(@CurrentUser() userId: number, @Body() dto: SetPhotoDto) {
+    return this.service.setPhoto(userId, dto);
+  }
+
+  @Delete('photo')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a foto de perfil do usuário' })
+  @ApiNoContentResponse({ description: 'Removido com sucesso' })
+  @ApiNotFoundResponse({ description: 'Usuário sem foto de perfil' })
+  removePhoto(@CurrentUser() userId: number) {
+    return this.service.removePhoto(userId);
   }
 }
