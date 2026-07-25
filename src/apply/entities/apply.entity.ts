@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Company } from '../../company/entities/company.entity';
+import { AdviceStatus } from '../enums/advice-status.enum';
 import { ApplyStatus } from '../enums/apply-status.enum';
 
 @Entity('apply')
@@ -42,6 +43,31 @@ export class Apply {
   @ApiProperty({ example: 'Processo via LinkedIn...', nullable: true })
   @Column({ type: 'text', nullable: true })
   description: string | null;
+
+  // Criado por humano (app) ou robô (extensão). Default: humano.
+  @ApiProperty({
+    example: true,
+    description: 'Humano (app) ou robô (extensão)',
+  })
+  @Column({ name: 'is_human', type: 'boolean', default: true })
+  isHuman: boolean;
+
+  // Conselho da extensão (1 não aplique … 4 ótimo match). Opcional.
+  @ApiProperty({
+    enum: AdviceStatus,
+    nullable: true,
+    example: AdviceStatus.EVALUATE,
+  })
+  @Column({ name: 'advice_status', type: 'smallint', nullable: true })
+  adviceStatus: AdviceStatus | null;
+
+  // Motivo/decisão (por que apliquei ou não), opcional — usado no Conselheiro.
+  @ApiProperty({
+    nullable: true,
+    example: 'Extensão não soube; apliquei porque...',
+  })
+  @Column({ name: 'decision_description', type: 'text', nullable: true })
+  decisionDescription: string | null;
 
   // companyId — FK para company (not null)
   @ApiProperty({ example: 1, description: 'Id da empresa (FK)' })

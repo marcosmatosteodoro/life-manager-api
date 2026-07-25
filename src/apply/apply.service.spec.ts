@@ -30,6 +30,9 @@ const buildApply = (overrides: Partial<Apply> = {}): Apply => ({
   date: '2026-06-22',
   status: ApplyStatus.APPLIED,
   description: null,
+  isHuman: true,
+  adviceStatus: null,
+  decisionDescription: null,
   companyId: 1,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
@@ -98,7 +101,11 @@ describe('ApplyService', () => {
       expect(companyRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
       });
-      expect(applyRepository.create).toHaveBeenCalledWith(dto);
+      // Padrão humano quando o dto não manda isHuman.
+      expect(applyRepository.create).toHaveBeenCalledWith({
+        ...dto,
+        isHuman: true,
+      });
       expect(applyRepository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(entity);
     });

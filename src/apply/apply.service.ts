@@ -19,7 +19,11 @@ export class ApplyService {
 
   async create(createApplyDto: CreateApplyDto): Promise<Apply> {
     await this.ensureCompanyExists(createApplyDto.companyId);
-    const apply = this.applyRepository.create(createApplyDto);
+    const apply = this.applyRepository.create({
+      ...createApplyDto,
+      // Padrão humano (app); a extensão manda isHuman: false.
+      isHuman: createApplyDto.isHuman ?? true,
+    });
     return this.applyRepository.save(apply);
   }
 

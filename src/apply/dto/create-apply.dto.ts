@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -8,6 +9,7 @@ import {
   IsPositive,
   IsString,
 } from 'class-validator';
+import { AdviceStatus } from '../enums/advice-status.enum';
 import { ApplyStatus } from '../enums/apply-status.enum';
 
 export class CreateApplyDto {
@@ -47,4 +49,25 @@ export class CreateApplyDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  // Humano (app) ou robô (extensão). Omitido = humano (default no service).
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Humano (app) ou robô (extensão). Padrão: humano.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isHuman?: boolean;
+
+  // Conselho da extensão: 1 não aplique … 4 ótimo match. Opcional.
+  @ApiPropertyOptional({ enum: AdviceStatus, example: AdviceStatus.EVALUATE })
+  @IsOptional()
+  @IsEnum(AdviceStatus)
+  adviceStatus?: AdviceStatus;
+
+  // Motivo/decisão, opcional.
+  @ApiPropertyOptional({ example: 'Extensão não soube; apliquei porque...' })
+  @IsOptional()
+  @IsString()
+  decisionDescription?: string;
 }
