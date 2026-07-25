@@ -2,5 +2,7 @@
   "notFound": "Usuário #{id} não encontrado",
   "emailInUse": "E-mail já está em uso.",
   "usernameInUse": "Nome de usuário já está em uso.",
-  "photoNotFound": "Usuário sem foto de perfil"
+  "photoNotFound": "Usuário sem foto de perfil",
+  "cannotDeleteSelf": "Você não pode remover o próprio usuário.",
+  "lastAdmin": "Não é possível remover ou rebaixar o único admin."
 }

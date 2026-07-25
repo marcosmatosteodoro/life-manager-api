@@ -9,11 +9,14 @@ import {
 import {
   DEFAULT_LANGUAGE,
   DEFAULT_THEME,
+  DEFAULT_USER_ROLE,
   LANGUAGES,
   THEMES,
+  USER_ROLES,
   type CustomColors,
   type Language,
   type Theme,
+  type UserRole,
 } from '../user.constants';
 
 /**
@@ -79,6 +82,11 @@ export class User {
   })
   @Column({ name: 'custom_colors', type: 'jsonb', nullable: true })
   customColors: CustomColors | null;
+
+  // Papel: 'admin' (gerencia usuários / Próximos passos) ou 'member' (padrão).
+  @ApiProperty({ enum: USER_ROLES, example: DEFAULT_USER_ROLE })
+  @Column({ type: 'varchar', length: 16, default: DEFAULT_USER_ROLE })
+  role: UserRole;
 
   // Força a troca de senha no próximo login (usado no admin semeado).
   @ApiProperty({ example: false })

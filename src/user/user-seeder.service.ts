@@ -23,6 +23,7 @@ export class UserSeederService implements OnApplicationBootstrap {
       email: 'admin@example.com',
       name: 'Admin',
       passwordHash: await hashPassword('admin'),
+      role: 'admin',
       theme: DEFAULT_THEME,
       language: DEFAULT_LANGUAGE,
       mustChangePassword: true,

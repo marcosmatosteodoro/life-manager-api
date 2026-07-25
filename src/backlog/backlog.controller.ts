@@ -10,8 +10,10 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -19,6 +21,8 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { BACKLOG_STATUSES, type BacklogStatus } from './backlog.constants';
 import { BacklogService } from './backlog.service';
 import { BacklogAudioResponseDto } from './dto/backlog-audio-response.dto';
@@ -29,8 +33,12 @@ import { SetBacklogAudioDto } from './dto/set-backlog-audio.dto';
 import { UpdateBacklogItemDto } from './dto/update-backlog-item.dto';
 import { BacklogItem } from './entities/backlog-item.entity';
 
+// "Próximos passos" é exclusivo do admin (gate por papel).
 @ApiTags('backlog')
+@ApiForbiddenResponse({ description: 'Requer papel admin' })
 @Controller('backlog')
+@UseGuards(RolesGuard)
+@Roles('admin')
 export class BacklogController {
   constructor(private readonly service: BacklogService) {}
 

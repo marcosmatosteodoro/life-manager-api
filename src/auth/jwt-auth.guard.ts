@@ -34,9 +34,13 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException(tr('auth.tokenMissing'));
     }
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string }>(token);
-      // Anexa o payload à request (útil quando houver creatorId por usuário).
-      (request as Request & { user?: { sub: string } }).user = payload;
+      const payload = await this.jwt.verifyAsync<{
+        sub: string;
+        role?: string;
+      }>(token);
+      // Anexa o payload à request (id + papel, usados por CurrentUser/RolesGuard).
+      (request as Request & { user?: { sub: string; role?: string } }).user =
+        payload;
       return true;
     } catch {
       throw new UnauthorizedException(tr('auth.tokenInvalid'));

@@ -36,6 +36,7 @@ const buildUser = (overrides: Partial<User> = {}): User => ({
   theme: 'light',
   language: 'en-US',
   customColors: null,
+  role: 'admin',
   mustChangePassword: false,
   createdAt: new Date('2026-06-30T08:00:00.000Z'),
   updatedAt: new Date('2026-06-30T08:00:00.000Z'),

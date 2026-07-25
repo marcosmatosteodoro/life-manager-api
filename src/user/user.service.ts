@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
+import { hashPassword } from '../auth/password.util';
 import { PhotoResponseDto } from '../common/dto/photo-response.dto';
 import { SetPhotoDto } from '../common/dto/set-photo.dto';
 import {
@@ -13,10 +15,13 @@ import {
   readProfilePhotoBase64,
 } from '../common/photo-blob.storage';
 import { tr } from '../i18n/translate';
+import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserPhoto } from './entities/user-photo.entity';
 import { User } from './entities/user.entity';
+import { DEFAULT_USER_ROLE } from './user.constants';
 
 @Injectable()
 export class UserService {
@@ -86,6 +91,76 @@ export class UserService {
     return this.repository.count();
   }
 
+  // ----- Administração de usuários (somente admin) -----
+
+  /** Lista todos os usuários (sem passwordHash). */
+  async listAll(): Promise<UserResponseDto[]> {
+    const users = await this.repository.find({ order: { id: 'ASC' } });
+    return users.map((u) => UserResponseDto.from(u));
+  }
+
+  /** Cria um usuário (admin). Valida unicidade e faz o hash da senha. */
+  async adminCreate(dto: CreateUserDto): Promise<UserResponseDto> {
+    await this.ensureUnique('username', dto.username);
+    await this.ensureUnique('email', dto.email);
+    const user = await this.repository.save(
+      this.repository.create({
+        username: dto.username,
+        email: dto.email,
+        name: dto.name,
+        passwordHash: await hashPassword(dto.password),
+        role: dto.role ?? DEFAULT_USER_ROLE,
+      }),
+    );
+    return UserResponseDto.from(user);
+  }
+
+  /** Edita um usuário (admin): nome/usuário/e-mail/papel/senha. */
+  async adminUpdate(
+    id: number,
+    dto: AdminUpdateUserDto,
+  ): Promise<UserResponseDto> {
+    const user = await this.findByIdOrThrow(id);
+
+    if (dto.username && dto.username !== user.username) {
+      await this.ensureUnique('username', dto.username, id);
+      user.username = dto.username;
+    }
+    if (dto.email && dto.email !== user.email) {
+      await this.ensureUnique('email', dto.email, id);
+      user.email = dto.email;
+    }
+    if (dto.name !== undefined) user.name = dto.name;
+    if (dto.role !== undefined && dto.role !== user.role) {
+      // Rebaixar o último admin deixaria o app sem admin: bloqueia.
+      if (dto.role !== 'admin') await this.ensureNotLastAdmin();
+      user.role = dto.role;
+    }
+    if (dto.password) {
+      user.passwordHash = await hashPassword(dto.password);
+      user.mustChangePassword = false;
+    }
+    return UserResponseDto.from(await this.repository.save(user));
+  }
+
+  /** Remove um usuário (admin). Não pode remover a si mesmo nem o último admin. */
+  async adminRemove(id: number, currentUserId: number): Promise<void> {
+    if (id === currentUserId) {
+      throw new BadRequestException(tr('user.cannotDeleteSelf'));
+    }
+    const user = await this.findByIdOrThrow(id);
+    if (user.role === 'admin') await this.ensureNotLastAdmin();
+    await this.repository.delete(id);
+  }
+
+  /** Garante que há mais de um admin (para não ficar sem nenhum). */
+  private async ensureNotLastAdmin(): Promise<void> {
+    const admins = await this.repository.count({ where: { role: 'admin' } });
+    if (admins <= 1) {
+      throw new BadRequestException(tr('user.lastAdmin'));
+    }
+  }
+
   // ----- Foto de perfil (Vercel Blob privado; Postgres guarda a referência) -----
 
   /** Foto de perfil em base64 (lida do Blob sob demanda). */
@@ -141,14 +216,20 @@ export class UserService {
     return (await this.photoRepository.count({ where: { userId: id } })) > 0;
   }
 
-  /** Garante que nenhum OUTRO usuário já usa o valor do campo único. */
+  /**
+   * Garante que nenhum OUTRO usuário já usa o valor do campo único. Sem
+   * `exceptId` (criação), verifica contra todos.
+   */
   private async ensureUnique(
     field: 'username' | 'email',
     value: string,
-    exceptId: number,
+    exceptId?: number,
   ): Promise<void> {
     const clash = await this.repository.findOne({
-      where: { [field]: value, id: Not(exceptId) },
+      where:
+        exceptId != null
+          ? { [field]: value, id: Not(exceptId) }
+          : { [field]: value },
     });
     if (clash) {
       throw new ConflictException(
