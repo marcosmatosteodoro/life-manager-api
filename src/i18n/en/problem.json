@@ -1,5 +1,6 @@
 {
   "notFound": "Problem #{id} not found",
   "reorderMismatch": "The submitted order must contain exactly all problems.",
-  "categoryNotFound": "Category #{id} not found"
+  "categoryNotFound": "Category #{id} not found",
+  "audioNotFound": "Problem #{id} has no voice note"
 }

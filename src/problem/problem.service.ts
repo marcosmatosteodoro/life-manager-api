@@ -4,12 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { ProblemCategory } from '../problem-category/entities/problem-category.entity';
 import { tr } from '../i18n/translate';
 import { CreateProblemDto } from './dto/create-problem.dto';
+import { ProblemAudioResponseDto } from './dto/problem-audio-response.dto';
 import { ProblemListResponseDto } from './dto/problem-list-response.dto';
+import { SetProblemAudioDto } from './dto/set-problem-audio.dto';
 import { UpdateProblemDto } from './dto/update-problem.dto';
+import { ProblemAudio } from './entities/problem-audio.entity';
 import { Problem } from './entities/problem.entity';
 import {
   DEFAULT_PRIORITY,
@@ -24,6 +27,8 @@ export class ProblemService {
     private readonly repository: Repository<Problem>,
     @InjectRepository(ProblemCategory)
     private readonly categoryRepository: Repository<ProblemCategory>,
+    @InjectRepository(ProblemAudio)
+    private readonly audioRepository: Repository<ProblemAudio>,
   ) {}
 
   /** Cria no fim da lista do usuário (position = maior + 1). */
@@ -55,6 +60,7 @@ export class ProblemService {
       relations: { category: true },
       order: { position: 'ASC' },
     });
+    await this.attachHasAudio(rows);
     return { count: rows.length, rows };
   }
 
@@ -153,6 +159,60 @@ export class ProblemService {
         })
         .execute();
     });
+  }
+
+  // ----- Nota de voz (áudio) — escopada pelo dono do problema -----
+
+  /** Áudio do problema (base64). 404 se não há ou se não é do usuário. */
+  async getAudio(id: number, userId: number): Promise<ProblemAudioResponseDto> {
+    await this.findOne(id, userId); // 404 se o problema não for do usuário
+    const audio = await this.audioRepository.findOne({
+      where: { problemId: id },
+    });
+    if (!audio) {
+      throw new NotFoundException(tr('problem.audioNotFound', { id }));
+    }
+    return { data: audio.data, mimeType: audio.mimeType };
+  }
+
+  /** Grava/atualiza a nota de voz do problema (upsert por problemId). */
+  async setAudio(
+    id: number,
+    dto: SetProblemAudioDto,
+    userId: number,
+  ): Promise<ProblemAudioResponseDto> {
+    await this.findOne(id, userId); // garante dono / 404
+    const existing = await this.audioRepository.findOne({
+      where: { problemId: id },
+    });
+    const audio = existing
+      ? Object.assign(existing, { data: dto.data, mimeType: dto.mimeType })
+      : this.audioRepository.create({
+          problemId: id,
+          data: dto.data,
+          mimeType: dto.mimeType,
+        });
+    const saved = await this.audioRepository.save(audio);
+    return { data: saved.data, mimeType: saved.mimeType };
+  }
+
+  async removeAudio(id: number, userId: number): Promise<void> {
+    await this.findOne(id, userId); // garante dono / 404
+    const result = await this.audioRepository.delete({ problemId: id });
+    if (!result.affected) {
+      throw new NotFoundException(tr('problem.audioNotFound', { id }));
+    }
+  }
+
+  /** Marca hasAudio sem carregar o blob (uma query pelos ids). */
+  private async attachHasAudio(rows: Problem[]): Promise<void> {
+    if (rows.length === 0) return;
+    const audios = await this.audioRepository.find({
+      where: { problemId: In(rows.map((r) => r.id)) },
+      select: { problemId: true },
+    });
+    const withAudio = new Set(audios.map((a) => a.problemId));
+    for (const row of rows) row.hasAudio = withAudio.has(row.id);
   }
 
   /** Garante que a categoria referenciada existe E é do usuário (erro limpo). */

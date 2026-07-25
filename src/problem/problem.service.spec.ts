@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProblemCategory } from '../problem-category/entities/problem-category.entity';
 import { CreateProblemDto } from './dto/create-problem.dto';
+import { ProblemAudio } from './entities/problem-audio.entity';
 import { Problem } from './entities/problem.entity';
 import { ProblemService } from './problem.service';
 
@@ -42,6 +43,13 @@ describe('ProblemService', () => {
     manager: { transaction: jest.Mock; createQueryBuilder: jest.Mock };
   };
   let categoryRepo: { findOne: jest.Mock };
+  let audioRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    delete: jest.Mock;
+  };
   let manager: {
     find: jest.Mock;
     findOne: jest.Mock;
@@ -71,6 +79,13 @@ describe('ProblemService', () => {
       },
     };
     categoryRepo = { findOne: jest.fn() };
+    audioRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      create: jest.fn((d: unknown) => d),
+      save: jest.fn((e: unknown) => Promise.resolve(e)),
+      delete: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -80,6 +95,7 @@ describe('ProblemService', () => {
           provide: getRepositoryToken(ProblemCategory),
           useValue: categoryRepo,
         },
+        { provide: getRepositoryToken(ProblemAudio), useValue: audioRepo },
       ],
     }).compile();
     service = module.get(ProblemService);
@@ -291,6 +307,48 @@ describe('ProblemService', () => {
     it('lança NotFoundException quando o id não existe', async () => {
       manager.findOne.mockResolvedValue(null);
       await expect(service.remove(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('nota de voz (áudio)', () => {
+    it('getAudio lança NotFound quando não há áudio', async () => {
+      repo.findOne.mockResolvedValue(buildProblem()); // problema é do usuário
+      audioRepo.findOne.mockResolvedValue(null);
+      await expect(service.getAudio(1, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('getAudio lança NotFound quando o problema não é do usuário', async () => {
+      repo.findOne.mockResolvedValue(null); // findOne escopado não achou
+      await expect(service.getAudio(1, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(audioRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('setAudio faz upsert (cria quando não existe)', async () => {
+      repo.findOne.mockResolvedValue(buildProblem());
+      audioRepo.findOne.mockResolvedValue(null);
+      const result = await service.setAudio(
+        1,
+        { data: 'AAA', mimeType: 'audio/webm' },
+        USER_ID,
+      );
+      expect(audioRepo.create).toHaveBeenCalledWith({
+        problemId: 1,
+        data: 'AAA',
+        mimeType: 'audio/webm',
+      });
+      expect(result).toEqual({ data: 'AAA', mimeType: 'audio/webm' });
+    });
+
+    it('removeAudio lança NotFound quando nada foi apagado', async () => {
+      repo.findOne.mockResolvedValue(buildProblem());
+      audioRepo.delete.mockResolvedValue({ affected: 0 });
+      await expect(service.removeAudio(1, USER_ID)).rejects.toThrow(
         NotFoundException,
       );
     });

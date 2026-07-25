@@ -86,4 +86,9 @@ export class Problem {
   @ApiProperty({ example: 1, nullable: true })
   @Column({ name: 'creator_id', type: 'int', nullable: true })
   creatorId: number | null;
+
+  // Campo calculado (não-persistido): tem nota de voz? Setado no findAll via 1
+  // query — a listagem NÃO carrega o áudio (base64 vem sob demanda).
+  @ApiProperty({ example: false })
+  hasAudio?: boolean;
 }

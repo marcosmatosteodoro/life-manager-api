@@ -21,8 +21,10 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateProblemDto } from './dto/create-problem.dto';
+import { ProblemAudioResponseDto } from './dto/problem-audio-response.dto';
 import { ProblemListResponseDto } from './dto/problem-list-response.dto';
 import { ReorderProblemDto } from './dto/reorder-problem.dto';
+import { SetProblemAudioDto } from './dto/set-problem-audio.dto';
 import { UpdateProblemDto } from './dto/update-problem.dto';
 import { Problem } from './entities/problem.entity';
 import { PROBLEM_STATUSES, type ProblemStatus } from './problem.constants';
@@ -95,5 +97,39 @@ export class ProblemController {
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
     return this.service.remove(id, userId);
+  }
+
+  // ----- Nota de voz (áudio) do problema -----
+
+  @Get(':id/audio')
+  @ApiOperation({ summary: 'Busca a nota de voz do problema (base64)' })
+  @ApiOkResponse({ type: ProblemAudioResponseDto })
+  @ApiNotFoundResponse({ description: 'Sem áudio para este problema' })
+  getAudio(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+    return this.service.getAudio(id, userId);
+  }
+
+  @Post(':id/audio')
+  @ApiOperation({ summary: 'Grava/atualiza a nota de voz do problema' })
+  @ApiOkResponse({ type: ProblemAudioResponseDto })
+  @ApiNotFoundResponse({ description: 'Problema não encontrado' })
+  setAudio(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetProblemAudioDto,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.setAudio(id, dto, userId);
+  }
+
+  @Delete(':id/audio')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a nota de voz do problema' })
+  @ApiNoContentResponse({ description: 'Removido com sucesso' })
+  @ApiNotFoundResponse({ description: 'Sem áudio para este problema' })
+  removeAudio(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.removeAudio(id, userId);
   }
 }
