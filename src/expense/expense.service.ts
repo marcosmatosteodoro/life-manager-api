@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { del, get, put } from '@vercel/blob';
 import { Between, In, Repository } from 'typeorm';
 import { AiService } from '../ai/ai.service';
 import { ExpenseCategory } from '../expense-category/entities/expense-category.entity';
@@ -261,15 +262,24 @@ export class ExpenseService {
     }
   }
 
-  // ----- Fotos (base64 no Postgres) -----
+  // ----- Fotos (Vercel Blob privado; Postgres guarda só a referência) -----
 
-  /** Fotos do gasto (com base64), buscadas sob demanda. */
+  /**
+   * Fotos do gasto em base64, lidas do Blob (privado) sob demanda. A leitura
+   * passa pelo back autenticado — o binário nunca fica exposto por URL pública.
+   */
   async listPhotos(id: number): Promise<ExpensePhotoResponseDto[]> {
     const photos = await this.photoRepository.find({
       where: { expenseId: id },
       order: { id: 'ASC' },
     });
-    return photos.map((p) => ({ id: p.id, data: p.data, mimeType: p.mimeType }));
+    return Promise.all(
+      photos.map(async (p) => ({
+        id: p.id,
+        mimeType: p.mimeType,
+        data: await this.readBlobBase64(p.pathname),
+      })),
+    );
   }
 
   async addPhoto(
@@ -277,24 +287,43 @@ export class ExpenseService {
     dto: AddExpensePhotoDto,
   ): Promise<ExpensePhotoResponseDto> {
     await this.findOne(id); // garante 404 se o gasto não existe
+    const ext = dto.mimeType.split('/')[1]?.replace(/[^\w]/g, '') || 'bin';
+    const buffer = Buffer.from(dto.data, 'base64');
+    // Blob privado; addRandomSuffix evita colisão de nome.
+    const blob = await put(`expenses/${id}/photo.${ext}`, buffer, {
+      access: 'private',
+      contentType: dto.mimeType,
+      addRandomSuffix: true,
+    });
     const saved = await this.photoRepository.save(
       this.photoRepository.create({
         expenseId: id,
-        data: dto.data,
+        pathname: blob.pathname,
+        url: blob.url,
         mimeType: dto.mimeType,
       }),
     );
-    return { id: saved.id, data: saved.data, mimeType: saved.mimeType };
+    return { id: saved.id, data: dto.data, mimeType: saved.mimeType };
   }
 
   async removePhoto(id: number, photoId: number): Promise<void> {
-    const result = await this.photoRepository.delete({
-      id: photoId,
-      expenseId: id,
+    const photo = await this.photoRepository.findOne({
+      where: { id: photoId, expenseId: id },
     });
-    if (!result.affected) {
+    if (!photo) {
       throw new NotFoundException(tr('expense.photoNotFound', { id: photoId }));
     }
+    // Apaga o blob e depois a linha (se o blob já não existir, ignora).
+    await del(photo.url).catch(() => undefined);
+    await this.photoRepository.delete(photo.id);
+  }
+
+  /** Lê um blob privado e devolve o conteúdo em base64. */
+  private async readBlobBase64(pathname: string): Promise<string> {
+    const result = await get(pathname, { access: 'private' });
+    if (!result?.stream) return '';
+    const buffer = Buffer.from(await new Response(result.stream).arrayBuffer());
+    return buffer.toString('base64');
   }
 
   // ----- Helpers -----

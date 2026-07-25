@@ -4,8 +4,9 @@ export class ExpensePhoto1784200000000 implements MigrationInterface {
   name = 'ExpensePhoto1784200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // O binário fica no Vercel Blob (privado); aqui guardamos só a referência.
     await queryRunner.query(
-      `CREATE TABLE "expense_photo" ("id" SERIAL NOT NULL, "expense_id" integer NOT NULL, "data" text NOT NULL, "mime_type" character varying(64) NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_expense_photo" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "expense_photo" ("id" SERIAL NOT NULL, "expense_id" integer NOT NULL, "pathname" character varying(512) NOT NULL, "url" character varying(1024) NOT NULL, "mime_type" character varying(64) NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_expense_photo" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE INDEX "IDX_expense_photo_expense" ON "expense_photo" ("expense_id")`,

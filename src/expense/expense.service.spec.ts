@@ -1,7 +1,15 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { del, put } from '@vercel/blob';
 import { AiService } from '../ai/ai.service';
+
+// Mock do SDK do Vercel Blob (não sobe nada de verdade nos testes).
+jest.mock('@vercel/blob', () => ({
+  put: jest.fn().mockResolvedValue({ pathname: 'expenses/1/p.jpg', url: 'https://blob/x' }),
+  get: jest.fn(),
+  del: jest.fn().mockResolvedValue(undefined),
+}));
 import { ExpenseCategory } from '../expense-category/entities/expense-category.entity';
 import { ExpenseAudio } from './entities/expense-audio.entity';
 import { ExpensePhoto } from './entities/expense-photo.entity';
@@ -52,6 +60,7 @@ describe('ExpenseService', () => {
   };
   let photoRepo: {
     find: jest.Mock;
+    findOne: jest.Mock;
     create: jest.Mock;
     save: jest.Mock;
     delete: jest.Mock;
@@ -84,6 +93,7 @@ describe('ExpenseService', () => {
 
     photoRepo = {
       find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
       create: jest.fn((d) => d),
       save: jest.fn((e) => Promise.resolve({ id: 9, ...e })),
       delete: jest.fn(),
@@ -217,23 +227,39 @@ describe('ExpenseService', () => {
   });
 
   describe('fotos', () => {
-    it('addPhoto valida o gasto e persiste', async () => {
+    it('addPhoto sobe pro Blob e guarda a referência', async () => {
       repo.findOne.mockResolvedValue({ id: 1 });
       const result = await service.addPhoto(1, {
-        data: 'AAA',
+        data: Buffer.from('img').toString('base64'),
         mimeType: 'image/jpeg',
       });
-      expect(photoRepo.create).toHaveBeenCalledWith({
-        expenseId: 1,
-        data: 'AAA',
-        mimeType: 'image/jpeg',
-      });
+      expect(put).toHaveBeenCalledWith(
+        expect.stringContaining('expenses/1/photo'),
+        expect.any(Buffer),
+        expect.objectContaining({ access: 'private', contentType: 'image/jpeg' }),
+      );
+      expect(photoRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          expenseId: 1,
+          pathname: 'expenses/1/p.jpg',
+          url: 'https://blob/x',
+          mimeType: 'image/jpeg',
+        }),
+      );
       expect(result).toMatchObject({ mimeType: 'image/jpeg' });
     });
 
-    it('removePhoto lança NotFound quando nada foi apagado', async () => {
-      photoRepo.delete.mockResolvedValue({ affected: 0 });
+    it('removePhoto lança NotFound quando a foto não existe', async () => {
+      photoRepo.findOne.mockResolvedValue(null);
       await expect(service.removePhoto(1, 5)).rejects.toThrow(NotFoundException);
+    });
+
+    it('removePhoto apaga o blob e a linha', async () => {
+      photoRepo.findOne.mockResolvedValue({ id: 5, url: 'https://blob/x' });
+      photoRepo.delete.mockResolvedValue({ affected: 1 });
+      await service.removePhoto(1, 5);
+      expect(del).toHaveBeenCalledWith('https://blob/x');
+      expect(photoRepo.delete).toHaveBeenCalledWith(5);
     });
   });
 
