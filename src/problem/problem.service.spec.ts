@@ -6,6 +6,8 @@ import { CreateProblemDto } from './dto/create-problem.dto';
 import { Problem } from './entities/problem.entity';
 import { ProblemService } from './problem.service';
 
+const USER_ID = 1;
+
 // QueryBuilder encadeável (maxPosition usa select/getRawOne; remove usa update/set/where/execute).
 const makeQb = (raw: { max: number | null } = { max: null }) => ({
   select: jest.fn().mockReturnThis(),
@@ -74,7 +76,10 @@ describe('ProblemService', () => {
       providers: [
         ProblemService,
         { provide: getRepositoryToken(Problem), useValue: repo },
-        { provide: getRepositoryToken(ProblemCategory), useValue: categoryRepo },
+        {
+          provide: getRepositoryToken(ProblemCategory),
+          useValue: categoryRepo,
+        },
       ],
     }).compile();
     service = module.get(ProblemService);
@@ -87,20 +92,24 @@ describe('ProblemService', () => {
       qb.getRawOne.mockResolvedValue({ max: 3 });
 
       const dto: CreateProblemDto = { title: 'Novo' };
-      const result = await service.create(dto);
+      const result = await service.create(dto, USER_ID);
 
       expect(result).toMatchObject({
         title: 'Novo',
         status: 'pendente',
         priority: 'media', // default
         position: 4,
+        creatorId: USER_ID,
       });
     });
 
     it('respeita a prioridade enviada', async () => {
       qb.getRawOne.mockResolvedValue({ max: 0 });
 
-      const result = await service.create({ title: 'X', priority: 'urgente' });
+      const result = await service.create(
+        { title: 'X', priority: 'urgente' },
+        USER_ID,
+      );
 
       expect(result).toMatchObject({ priority: 'urgente' });
     });
@@ -108,10 +117,13 @@ describe('ProblemService', () => {
     it('primeira criação recebe position 1 e respeita o status enviado', async () => {
       qb.getRawOne.mockResolvedValue({ max: null });
 
-      const result = await service.create({
-        title: 'Bug',
-        status: 'em_progresso',
-      });
+      const result = await service.create(
+        {
+          title: 'Bug',
+          status: 'em_progresso',
+        },
+        USER_ID,
+      );
 
       expect(result).toMatchObject({ position: 1, status: 'em_progresso' });
     });
@@ -121,10 +133,10 @@ describe('ProblemService', () => {
     it('sem filtro: ordena por position ASC e carrega a categoria', async () => {
       repo.find.mockResolvedValue([buildProblem()]);
 
-      await service.findAll();
+      await service.findAll(USER_ID);
 
       expect(repo.find).toHaveBeenCalledWith({
-        where: {},
+        where: { creatorId: USER_ID },
         relations: { category: true },
         order: { position: 'ASC' },
       });
@@ -133,10 +145,10 @@ describe('ProblemService', () => {
     it('com filtro: aplica o where por status', async () => {
       repo.find.mockResolvedValue([]);
 
-      await service.findAll('concluido');
+      await service.findAll(USER_ID, 'concluido');
 
       expect(repo.find).toHaveBeenCalledWith({
-        where: { status: 'concluido' },
+        where: { creatorId: USER_ID, status: 'concluido' },
         relations: { category: true },
         order: { position: 'ASC' },
       });
@@ -148,9 +160,14 @@ describe('ProblemService', () => {
       qb.getRawOne.mockResolvedValue({ max: 0 });
       categoryRepo.findOne.mockResolvedValue({ id: 2, name: 'Bug' });
 
-      const result = await service.create({ title: 'X', categoryId: 2 });
+      const result = await service.create(
+        { title: 'X', categoryId: 2 },
+        USER_ID,
+      );
 
-      expect(categoryRepo.findOne).toHaveBeenCalledWith({ where: { id: 2 } });
+      expect(categoryRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 2, creatorId: USER_ID },
+      });
       expect(result).toMatchObject({ categoryId: 2 });
     });
 
@@ -158,14 +175,14 @@ describe('ProblemService', () => {
       categoryRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.create({ title: 'X', categoryId: 999 }),
+        service.create({ title: 'X', categoryId: 999 }, USER_ID),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('update com categoryId null limpa a categoria (sem validar)', async () => {
       repo.findOne.mockResolvedValue(buildProblem({ categoryId: 2 }));
 
-      const result = await service.update(1, { categoryId: null });
+      const result = await service.update(1, { categoryId: null }, USER_ID);
 
       expect(categoryRepo.findOne).not.toHaveBeenCalled();
       expect(result.categoryId).toBeNull();
@@ -177,12 +194,18 @@ describe('ProblemService', () => {
       const entity = buildProblem();
       repo.findOne.mockResolvedValue(entity);
 
-      await expect(service.findOne(1)).resolves.toEqual(entity);
+      await expect(service.findOne(1, USER_ID)).resolves.toEqual(entity);
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+        relations: { category: true },
+      });
     });
 
     it('lança NotFoundException quando não encontrado', async () => {
       repo.findOne.mockResolvedValue(null);
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -190,12 +213,16 @@ describe('ProblemService', () => {
     it('atualiza título, descrição e status', async () => {
       repo.findOne.mockResolvedValue(buildProblem());
 
-      const result = await service.update(1, {
-        title: 'Novo título',
-        description: 'nova desc',
-        status: 'concluido',
-        priority: 'alta',
-      });
+      const result = await service.update(
+        1,
+        {
+          title: 'Novo título',
+          description: 'nova desc',
+          status: 'concluido',
+          priority: 'alta',
+        },
+        USER_ID,
+      );
 
       expect(result).toMatchObject({
         title: 'Novo título',
@@ -207,9 +234,9 @@ describe('ProblemService', () => {
 
     it('lança NotFoundException quando o id não existe', async () => {
       repo.findOne.mockResolvedValue(null);
-      await expect(service.update(999, { title: 'X' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update(999, { title: 'X' }, USER_ID),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -221,8 +248,11 @@ describe('ProblemService', () => {
         buildProblem({ id: 3, position: 3 }),
       ]);
 
-      const result = await service.reorder([3, 1, 2]);
+      const result = await service.reorder([3, 1, 2], USER_ID);
 
+      expect(manager.find).toHaveBeenCalledWith(Problem, {
+        where: { creatorId: USER_ID },
+      });
       const byId = new Map(result.rows.map((r) => [r.id, r.position]));
       expect(byId.get(3)).toBe(1);
       expect(byId.get(1)).toBe(2);
@@ -235,7 +265,7 @@ describe('ProblemService', () => {
         buildProblem({ id: 2 }),
       ]);
 
-      await expect(service.reorder([1, 99])).rejects.toThrow(
+      await expect(service.reorder([1, 99], USER_ID)).rejects.toThrow(
         BadRequestException,
       );
       expect(manager.save).not.toHaveBeenCalled();
@@ -246,17 +276,23 @@ describe('ProblemService', () => {
     it('remove e compacta as posições seguintes', async () => {
       manager.findOne.mockResolvedValue(buildProblem({ id: 1, position: 2 }));
 
-      await service.remove(1);
+      await service.remove(1, USER_ID);
 
-      expect(manager.remove).toHaveBeenCalled();
-      expect(qb.where).toHaveBeenCalledWith('position > :threshold', {
-        threshold: 2,
+      expect(manager.findOne).toHaveBeenCalledWith(Problem, {
+        where: { id: 1, creatorId: USER_ID },
       });
+      expect(manager.remove).toHaveBeenCalled();
+      expect(qb.where).toHaveBeenCalledWith(
+        'position > :threshold AND creator_id = :userId',
+        { threshold: 2, userId: USER_ID },
+      );
     });
 
     it('lança NotFoundException quando o id não existe', async () => {
       manager.findOne.mockResolvedValue(null);
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

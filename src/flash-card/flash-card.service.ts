@@ -32,49 +32,69 @@ export class FlashCardService {
     private readonly translationService: TranslationService,
   ) {}
 
-  async create(dto: CreateFlashCardDto): Promise<FlashCard> {
-    await this.ensureGroupExists(dto.flashCardGroupId);
-    const card = this.flashCardRepository.create(dto);
+  async create(dto: CreateFlashCardDto, userId: number): Promise<FlashCard> {
+    await this.ensureGroupExists(dto.flashCardGroupId, userId);
+    const card = this.flashCardRepository.create({ ...dto, creatorId: userId });
     return attachTotalReviews(await this.flashCardRepository.save(card));
   }
 
-  async findAll(): Promise<FlashCardListResponseDto> {
+  async findAll(userId: number): Promise<FlashCardListResponseDto> {
     const [rows, count] = await this.flashCardRepository.findAndCount({
+      where: { creatorId: userId },
       order: { createdAt: 'DESC' },
     });
     return { count, rows: rows.map(attachTotalReviews) };
   }
 
-  async findOne(id: number): Promise<FlashCard> {
-    const card = await this.flashCardRepository.findOne({ where: { id } });
+  async findOne(id: number, userId: number): Promise<FlashCard> {
+    const card = await this.flashCardRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!card) {
       throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
     return attachTotalReviews(card);
   }
 
-  async update(id: number, dto: UpdateFlashCardDto): Promise<FlashCard> {
+  async update(
+    id: number,
+    dto: UpdateFlashCardDto,
+    userId: number,
+  ): Promise<FlashCard> {
     // Valida a FK apenas quando flashCardGroupId é enviado.
     if (dto.flashCardGroupId !== undefined) {
-      await this.ensureGroupExists(dto.flashCardGroupId);
+      await this.ensureGroupExists(dto.flashCardGroupId, userId);
     }
-    const card = await this.flashCardRepository.preload({ id, ...dto });
+    // Escopo por dono: só edita se o card for do usuário.
+    const card = await this.flashCardRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!card) {
       throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
+    Object.assign(card, dto);
     return attachTotalReviews(await this.flashCardRepository.save(card));
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.flashCardRepository.delete(id);
+  async remove(id: number, userId: number): Promise<void> {
+    const result = await this.flashCardRepository.delete({
+      id,
+      creatorId: userId,
+    });
     if (!result.affected) {
       throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
   }
 
   /** Review de um flashcard: ajusta contadores, score e lastReview. */
-  async review(id: number, correct: boolean): Promise<FlashCard> {
-    const card = await this.flashCardRepository.findOne({ where: { id } });
+  async review(
+    id: number,
+    correct: boolean,
+    userId: number,
+  ): Promise<FlashCard> {
+    const card = await this.flashCardRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!card) {
       throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
@@ -86,8 +106,10 @@ export class FlashCardService {
    * Traduz o termo (en→pt) e salva em `translation`. Se já houver tradução
    * salva, devolve a do banco sem chamar o tradutor de novo (cache).
    */
-  async translate(id: number): Promise<FlashCard> {
-    const card = await this.flashCardRepository.findOne({ where: { id } });
+  async translate(id: number, userId: number): Promise<FlashCard> {
+    const card = await this.flashCardRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!card) {
       throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
@@ -99,10 +121,13 @@ export class FlashCardService {
   }
 
   /** Review em lote: aplica o mesmo cálculo para vários flashcards. */
-  async reviewBatch(items: ReviewFlashCardItemDto[]): Promise<FlashCard[]> {
+  async reviewBatch(
+    items: ReviewFlashCardItemDto[],
+    userId: number,
+  ): Promise<FlashCard[]> {
     const ids = items.map((i) => i.id);
     const cards = await this.flashCardRepository.find({
-      where: { id: In(ids) },
+      where: { id: In(ids), creatorId: userId },
     });
     if (cards.length !== ids.length) {
       const found = new Set(cards.map((c) => c.id));
@@ -124,10 +149,13 @@ export class FlashCardService {
    * somando as contagens de acertos/erros da rodada de uma vez. Compartilha a
    * mesma regra de score do review unitário (acerto +1, erro -1).
    */
-  async reviewBlock(items: BlockReviewItemDto[]): Promise<FlashCard[]> {
+  async reviewBlock(
+    items: BlockReviewItemDto[],
+    userId: number,
+  ): Promise<FlashCard[]> {
     const ids = items.map((i) => i.id);
     const cards = await this.flashCardRepository.find({
-      where: { id: In(ids) },
+      where: { id: In(ids), creatorId: userId },
     });
     if (cards.length !== ids.length) {
       const found = new Set(cards.map((c) => c.id));
@@ -152,7 +180,14 @@ export class FlashCardService {
   // ----- Imagem do card (Vercel Blob privado; Postgres guarda a referência) -----
 
   /** Imagem do card em base64 (lida do Blob sob demanda). */
-  async getImage(id: number): Promise<PhotoResponseDto> {
+  async getImage(id: number, userId: number): Promise<PhotoResponseDto> {
+    // Escopo por dono: só acessa a imagem se o card for do usuário.
+    const card = await this.flashCardRepository.findOne({
+      where: { id, creatorId: userId },
+    });
+    if (!card) {
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
+    }
     const image = await this.imageRepository.findOne({
       where: { flashCardId: id },
     });
@@ -166,8 +201,14 @@ export class FlashCardService {
   }
 
   /** Define/substitui a imagem do card (apaga o blob anterior, se houver). */
-  async setImage(id: number, dto: SetPhotoDto): Promise<PhotoResponseDto> {
-    const card = await this.flashCardRepository.findOne({ where: { id } });
+  async setImage(
+    id: number,
+    dto: SetPhotoDto,
+    userId: number,
+  ): Promise<PhotoResponseDto> {
+    const card = await this.flashCardRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!card) {
       throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
     }
@@ -200,7 +241,14 @@ export class FlashCardService {
     return { data: dto.data, mimeType: dto.mimeType };
   }
 
-  async removeImage(id: number): Promise<void> {
+  async removeImage(id: number, userId: number): Promise<void> {
+    // Escopo por dono: só remove a imagem se o card for do usuário.
+    const card = await this.flashCardRepository.findOne({
+      where: { id, creatorId: userId },
+    });
+    if (!card) {
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
+    }
     const image = await this.imageRepository.findOne({
       where: { flashCardId: id },
     });
@@ -223,9 +271,12 @@ export class FlashCardService {
     card.lastReview = this.today();
   }
 
-  private async ensureGroupExists(groupId: number): Promise<void> {
+  private async ensureGroupExists(
+    groupId: number,
+    userId: number,
+  ): Promise<void> {
     const group = await this.groupRepository.findOne({
-      where: { id: groupId },
+      where: { id: groupId, creatorId: userId },
     });
     if (!group) {
       throw new NotFoundException(

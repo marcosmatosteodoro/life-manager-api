@@ -31,8 +31,12 @@ export class HomeService {
     private readonly dogWeightRepository: Repository<DogWeight>,
   ) {}
 
-  /** Agrega, numa só resposta, tudo que a Home exibe. */
-  async getDashboard(): Promise<DashboardResponseDto> {
+  /**
+   * Agrega, numa só resposta, tudo que a Home exibe. Os dados **individuais**
+   * (afazeres, estudos, peso, flashcards) são do usuário logado; **Vagas** e
+   * **Cães** são compartilhados (sem filtro por usuário).
+   */
+  async getDashboard(userId: number): Promise<DashboardResponseDto> {
     const today = this.dayStr(new Date());
     const weekStart = this.startOfWeek();
     const monthStart = this.startOfMonth();
@@ -49,20 +53,22 @@ export class HomeService {
       dogs,
       dogWeightsThisMonth,
     ] = await Promise.all([
-      this.todoCheckService.today(), // garante/retorna os checks de hoje
+      this.todoCheckService.today(userId), // garante/retorna os checks de hoje
       this.articleRepository.find({
+        where: { creatorId: userId },
         select: { createdAt: true, status: true },
         order: { createdAt: 'DESC' },
       }),
       this.weightRepository.findOne({
-        where: {},
+        where: { creatorId: userId },
         order: { date: 'DESC', id: 'DESC' },
       }),
       this.weightRepository.count({
-        where: { date: MoreThanOrEqual(weekStart) },
+        where: { creatorId: userId, date: MoreThanOrEqual(weekStart) },
       }),
-      this.flashCardRepository.count(),
-      this.groupRepository.count(),
+      this.flashCardRepository.count({ where: { creatorId: userId } }),
+      this.groupRepository.count({ where: { creatorId: userId } }),
+      // Vagas e Cães são compartilhados: sem filtro por usuário.
       this.applyRepository.count(),
       this.applyRepository.count({ where: { date: today } }),
       this.dogRepository.find({ select: { id: true } }),

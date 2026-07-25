@@ -45,44 +45,33 @@ describe('DogWalkService', () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  it('cria o passeio com creatorId do usuário e cães resolvidos', async () => {
+  it('cria o passeio SEM dono (recurso compartilhado) e cães resolvidos', async () => {
     locationRepo.findOne.mockResolvedValue({ id: 5 });
     dogRepo.findBy.mockResolvedValue([{ id: 1 }, { id: 2 }]);
     repo.findOne.mockResolvedValue({ id: 10 });
 
-    await service.create(7, DTO);
+    await service.create(DTO);
 
+    // Compartilhado: creatorId sempre null.
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         locationId: 5,
         durationSeconds: 1800,
-        creatorId: 7,
+        creatorId: null,
         dogs: [{ id: 1 }, { id: 2 }],
       }),
     );
     expect(repo.save).toHaveBeenCalled();
   });
 
-  it('creatorId vira null quando o id não é finito (sem usuário)', async () => {
-    locationRepo.findOne.mockResolvedValue({ id: 5 });
-    dogRepo.findBy.mockResolvedValue([{ id: 1 }, { id: 2 }]);
-    repo.findOne.mockResolvedValue({ id: 10 });
-
-    await service.create(NaN, DTO);
-
-    expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ creatorId: null }),
-    );
-  });
-
   it('lança NotFound quando o local não existe', async () => {
     locationRepo.findOne.mockResolvedValue(null);
-    await expect(service.create(7, DTO)).rejects.toThrow(NotFoundException);
+    await expect(service.create(DTO)).rejects.toThrow(NotFoundException);
   });
 
   it('lança NotFound quando algum cão não existe', async () => {
     locationRepo.findOne.mockResolvedValue({ id: 5 });
     dogRepo.findBy.mockResolvedValue([{ id: 1 }]); // faltou o 2
-    await expect(service.create(7, DTO)).rejects.toThrow(NotFoundException);
+    await expect(service.create(DTO)).rejects.toThrow(NotFoundException);
   });
 });

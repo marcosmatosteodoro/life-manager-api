@@ -52,23 +52,29 @@ export class ArticleService {
     private readonly aiService: AiService,
   ) {}
 
-  create(createArticleDto: CreateArticleDto): Promise<Article> {
-    const article = this.articleRepository.create(createArticleDto);
+  create(createArticleDto: CreateArticleDto, userId: number): Promise<Article> {
+    const article = this.articleRepository.create({
+      ...createArticleDto,
+      creatorId: userId,
+    });
     // Status é sempre derivado dos dados — nunca enviado pelo front.
     article.status = computeStatus(article);
     return this.articleRepository.save(article);
   }
 
-  async findAll(): Promise<ArticleListResponseDto> {
+  async findAll(userId: number): Promise<ArticleListResponseDto> {
     // findAndCount retorna [registros, total] numa única consulta.
     const [rows, count] = await this.articleRepository.findAndCount({
+      where: { creatorId: userId },
       order: { createdAt: 'DESC' },
     });
     return { count, rows };
   }
 
-  async findOne(id: number): Promise<Article> {
-    const article = await this.articleRepository.findOne({ where: { id } });
+  async findOne(id: number, userId: number): Promise<Article> {
+    const article = await this.articleRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!article) {
       throw new NotFoundException(tr('article.notFound', { id }));
     }
@@ -78,22 +84,21 @@ export class ArticleService {
   async update(
     id: number,
     updateArticleDto: UpdateArticleDto,
+    userId: number,
   ): Promise<Article> {
-    // preload garante 404 quando o id não existe, sem update silencioso.
-    const article = await this.articleRepository.preload({
-      id,
-      ...updateArticleDto,
-    });
-    if (!article) {
-      throw new NotFoundException(tr('article.notFound', { id }));
-    }
+    // Escopo por dono: só edita se o registro for do usuário.
+    const article = await this.findOne(id, userId);
+    Object.assign(article, updateArticleDto);
     // Recalcula o status sobre o registro já mesclado (existente + alterações).
     article.status = computeStatus(article);
     return this.articleRepository.save(article);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.articleRepository.delete(id);
+  async remove(id: number, userId: number): Promise<void> {
+    const result = await this.articleRepository.delete({
+      id,
+      creatorId: userId,
+    });
     if (!result.affected) {
       throw new NotFoundException(tr('article.notFound', { id }));
     }
@@ -104,8 +109,8 @@ export class ArticleService {
    * versão mais natural e atribui uma nota. Salva o resultado em
    * summaryCorrected + score; o status é recalculado (vira COMPLETED).
    */
-  async correctSummary(id: number): Promise<Article> {
-    const article = await this.findOne(id); // lança NotFound se não existir
+  async correctSummary(id: number, userId: number): Promise<Article> {
+    const article = await this.findOne(id, userId); // lança NotFound se não existir
 
     const summary = article.summary;
     if (!summary || summary.trim() === '') {

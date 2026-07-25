@@ -17,6 +17,8 @@ const repoMock = () => ({
   count: jest.fn(),
 });
 
+const USER_ID = 1;
+
 describe('HomeService', () => {
   let service: HomeService;
   const todoCheckService = { today: jest.fn() };
@@ -68,7 +70,10 @@ describe('HomeService', () => {
     dogRepo.find.mockResolvedValue([{ id: 1 }, { id: 2 }]);
     dogWeightRepo.find.mockResolvedValue([{ dogId: 1 }]);
 
-    const result = await service.getDashboard();
+    const result = await service.getDashboard(USER_ID);
+
+    // Individuais escopados pelo usuário logado.
+    expect(todoCheckService.today).toHaveBeenCalledWith(USER_ID);
 
     expect(result).toEqual({
       streak: 1,
@@ -93,7 +98,7 @@ describe('HomeService', () => {
     dogRepo.find.mockResolvedValue([]);
     dogWeightRepo.find.mockResolvedValue([]);
 
-    const result = await service.getDashboard();
+    const result = await service.getDashboard(USER_ID);
 
     expect(result.streak).toBe(0);
     expect(result.dogs).toEqual({ needsWeighing: false });

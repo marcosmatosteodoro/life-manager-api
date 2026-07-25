@@ -22,6 +22,8 @@ const createMockRepository = (): MockRepository<Diary> => ({
   delete: jest.fn(),
 });
 
+const USER_ID = 1;
+
 const buildDiary = (overrides: Partial<Diary> = {}): Diary => ({
   id: 1,
   day: '2026-06-24',
@@ -69,9 +71,12 @@ describe('DiaryService', () => {
       repository.create!.mockReturnValue(entity);
       repository.save!.mockResolvedValue(entity);
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, USER_ID);
 
-      expect(repository.create).toHaveBeenCalledWith(dto);
+      expect(repository.create).toHaveBeenCalledWith({
+        ...dto,
+        creatorId: USER_ID,
+      });
       expect(repository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(entity);
     });
@@ -82,10 +87,10 @@ describe('DiaryService', () => {
       const rows = [buildDiary({ id: 1 }), buildDiary({ id: 2 })];
       repository.findAndCount!.mockResolvedValue([rows, 2]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
       expect(repository.findAndCount).toHaveBeenCalledWith({
-        where: {},
+        where: { creatorId: USER_ID },
         order: { day: 'DESC' },
       });
       expect(result).toEqual({ count: 2, rows });
@@ -95,10 +100,10 @@ describe('DiaryService', () => {
       const rows = [buildDiary({ type: DiaryType.GRATITUDE })];
       repository.findAndCount!.mockResolvedValue([rows, 1]);
 
-      const result = await service.findAll(DiaryType.GRATITUDE);
+      const result = await service.findAll(USER_ID, DiaryType.GRATITUDE);
 
       expect(repository.findAndCount).toHaveBeenCalledWith({
-        where: { type: DiaryType.GRATITUDE },
+        where: { creatorId: USER_ID, type: DiaryType.GRATITUDE },
         order: { day: 'DESC' },
       });
       expect(result).toEqual({ count: 1, rows });
@@ -107,7 +112,7 @@ describe('DiaryService', () => {
     it('retorna count 0 e rows vazio quando não há registros', async () => {
       repository.findAndCount!.mockResolvedValue([[], 0]);
 
-      const result = await service.findAll(DiaryType.DAILY);
+      const result = await service.findAll(USER_ID, DiaryType.DAILY);
 
       expect(result).toEqual({ count: 0, rows: [] });
     });
@@ -118,41 +123,51 @@ describe('DiaryService', () => {
       const entity = buildDiary();
       repository.findOne!.mockResolvedValue(entity);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, USER_ID);
 
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
       expect(result).toEqual(entity);
     });
 
     it('lança NotFoundException quando não encontrado', async () => {
       repository.findOne!.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
-    it('faz preload e salva o registro atualizado', async () => {
+    it('busca escopada, aplica as mudanças e salva o registro', async () => {
+      const existing = buildDiary();
       const updated = buildDiary({ description: 'editado' });
-      repository.preload!.mockResolvedValue(updated);
+      repository.findOne!.mockResolvedValue(existing);
       repository.save!.mockResolvedValue(updated);
 
-      const result = await service.update(1, { description: 'editado' });
+      const result = await service.update(
+        1,
+        { description: 'editado' },
+        USER_ID,
+      );
 
-      expect(repository.preload).toHaveBeenCalledWith({
-        id: 1,
-        description: 'editado',
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
       });
-      expect(repository.save).toHaveBeenCalledWith(updated);
+      expect(repository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1, description: 'editado' }),
+      );
       expect(result).toEqual(updated);
     });
 
-    it('lança NotFoundException quando o id não existe (preload null)', async () => {
-      repository.preload!.mockResolvedValue(undefined);
+    it('lança NotFoundException quando o id não existe (findOne null)', async () => {
+      repository.findOne!.mockResolvedValue(null);
 
-      await expect(service.update(999, { description: 'x' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update(999, { description: 'x' }, USER_ID),
+      ).rejects.toThrow(NotFoundException);
       expect(repository.save).not.toHaveBeenCalled();
     });
   });
@@ -161,14 +176,19 @@ describe('DiaryService', () => {
     it('remove quando o registro existe', async () => {
       repository.delete!.mockResolvedValue({ affected: 1, raw: [] });
 
-      await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      await expect(service.remove(1, USER_ID)).resolves.toBeUndefined();
+      expect(repository.delete).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
     });
 
     it('lança NotFoundException quando nada foi afetado', async () => {
       repository.delete!.mockResolvedValue({ affected: 0, raw: [] });
 
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

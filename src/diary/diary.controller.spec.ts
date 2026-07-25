@@ -6,6 +6,8 @@ import { UpdateDiaryDto } from './dto/update-diary.dto';
 import { Diary } from './entities/diary.entity';
 import { DiaryType } from './enums/diary-type.enum';
 
+const USER_ID = 1;
+
 const buildDiary = (overrides: Partial<Diary> = {}): Diary => ({
   id: 1,
   day: '2026-06-24',
@@ -54,8 +56,8 @@ describe('DiaryController', () => {
     const created = buildDiary();
     service.create.mockResolvedValue(created);
 
-    await expect(controller.create(dto)).resolves.toEqual(created);
-    expect(service.create).toHaveBeenCalledWith(dto);
+    await expect(controller.create(dto, USER_ID)).resolves.toEqual(created);
+    expect(service.create).toHaveBeenCalledWith(dto, USER_ID);
   });
 
   it('findAll repassa o type para o service', async () => {
@@ -65,26 +67,26 @@ describe('DiaryController', () => {
     };
     service.findAll.mockResolvedValue(payload);
 
-    await expect(controller.findAll(DiaryType.GRATITUDE)).resolves.toEqual(
-      payload,
-    );
-    expect(service.findAll).toHaveBeenCalledWith(DiaryType.GRATITUDE);
+    await expect(
+      controller.findAll(USER_ID, DiaryType.GRATITUDE),
+    ).resolves.toEqual(payload);
+    expect(service.findAll).toHaveBeenCalledWith(USER_ID, DiaryType.GRATITUDE);
   });
 
   it('findAll sem type chama o service com undefined', async () => {
     const payload = { count: 0, rows: [] };
     service.findAll.mockResolvedValue(payload);
 
-    await expect(controller.findAll()).resolves.toEqual(payload);
-    expect(service.findAll).toHaveBeenCalledWith(undefined);
+    await expect(controller.findAll(USER_ID)).resolves.toEqual(payload);
+    expect(service.findAll).toHaveBeenCalledWith(USER_ID, undefined);
   });
 
   it('findOne repassa o id para o service', async () => {
     const entity = buildDiary();
     service.findOne.mockResolvedValue(entity);
 
-    await expect(controller.findOne(1)).resolves.toEqual(entity);
-    expect(service.findOne).toHaveBeenCalledWith(1);
+    await expect(controller.findOne(1, USER_ID)).resolves.toEqual(entity);
+    expect(service.findOne).toHaveBeenCalledWith(1, USER_ID);
   });
 
   it('update repassa id e dto para o service', async () => {
@@ -92,14 +94,14 @@ describe('DiaryController', () => {
     const updated = buildDiary({ description: 'editado' });
     service.update.mockResolvedValue(updated);
 
-    await expect(controller.update(1, dto)).resolves.toEqual(updated);
-    expect(service.update).toHaveBeenCalledWith(1, dto);
+    await expect(controller.update(1, dto, USER_ID)).resolves.toEqual(updated);
+    expect(service.update).toHaveBeenCalledWith(1, dto, USER_ID);
   });
 
   it('remove repassa o id e resolve void', async () => {
     service.remove.mockResolvedValue(undefined);
 
-    await expect(controller.remove(1)).resolves.toBeUndefined();
-    expect(service.remove).toHaveBeenCalledWith(1);
+    await expect(controller.remove(1, USER_ID)).resolves.toBeUndefined();
+    expect(service.remove).toHaveBeenCalledWith(1, USER_ID);
   });
 });

@@ -34,11 +34,13 @@ export class TodoCheckService {
    * de datas) cujo `days` inclui o dia da semana de hoje, cria o check (default
    * desmarcado) se ainda não existir. Idempotente (unique todoId+date).
    */
-  async today(): Promise<TodoCheck[]> {
+  async today(userId: number): Promise<TodoCheck[]> {
     const date = this.currentDate();
     const isoDay = this.isoWeekday();
 
-    const todos = await this.todoRepository.find();
+    const todos = await this.todoRepository.find({
+      where: { creatorId: userId },
+    });
     const active = todos.filter(
       (t) =>
         t.startDate <= date &&
@@ -56,7 +58,12 @@ export class TodoCheckService {
     const toCreate = active
       .filter((t) => !existingTodoIds.has(t.id))
       .map((t) =>
-        this.todoCheckRepository.create({ todoId: t.id, date, checked: false }),
+        this.todoCheckRepository.create({
+          todoId: t.id,
+          date,
+          checked: false,
+          creatorId: userId,
+        }),
       );
     if (toCreate.length > 0) {
       await this.todoCheckRepository.save(toCreate);
@@ -69,9 +76,12 @@ export class TodoCheckService {
     });
   }
 
-  /** Histórico de checks, com filtro opcional de período (from/to). */
-  async findAll(query: TodoCheckQueryDto): Promise<TodoCheckListResponseDto> {
-    const where: FindOptionsWhere<TodoCheck> = {};
+  /** Histórico de checks do usuário, com filtro opcional de período (from/to). */
+  async findAll(
+    query: TodoCheckQueryDto,
+    userId: number,
+  ): Promise<TodoCheckListResponseDto> {
+    const where: FindOptionsWhere<TodoCheck> = { creatorId: userId };
     if (query.todoId != null) {
       where.todoId = query.todoId;
     }
@@ -90,8 +100,8 @@ export class TodoCheckService {
     return { count, rows };
   }
 
-  async create(dto: CreateTodoCheckDto): Promise<TodoCheck> {
-    await this.ensureTodoExists(dto.todoId);
+  async create(dto: CreateTodoCheckDto, userId: number): Promise<TodoCheck> {
+    await this.ensureTodoExists(dto.todoId, userId);
     const duplicate = await this.todoCheckRepository.findOne({
       where: { todoId: dto.todoId, date: dto.date },
     });
@@ -100,13 +110,16 @@ export class TodoCheckService {
         tr('todo.duplicateCheck', { date: dto.date }),
       );
     }
-    const check = this.todoCheckRepository.create(dto);
+    const check = this.todoCheckRepository.create({
+      ...dto,
+      creatorId: userId,
+    });
     return this.todoCheckRepository.save(check);
   }
 
-  async findOne(id: number): Promise<TodoCheck> {
+  async findOne(id: number, userId: number): Promise<TodoCheck> {
     const check = await this.todoCheckRepository.findOne({
-      where: { id },
+      where: { id, creatorId: userId },
       relations: { todo: true },
     });
     if (!check) {
@@ -115,26 +128,37 @@ export class TodoCheckService {
     return check;
   }
 
-  async update(id: number, dto: UpdateTodoCheckDto): Promise<TodoCheck> {
+  async update(
+    id: number,
+    dto: UpdateTodoCheckDto,
+    userId: number,
+  ): Promise<TodoCheck> {
     if (dto.todoId !== undefined) {
-      await this.ensureTodoExists(dto.todoId);
+      await this.ensureTodoExists(dto.todoId, userId);
     }
-    const check = await this.todoCheckRepository.preload({ id, ...dto });
-    if (!check) {
-      throw new NotFoundException(tr('todo.checkNotFound', { id }));
-    }
+    // Escopo por dono: só edita se o check for do usuário.
+    const check = await this.findOne(id, userId);
+    Object.assign(check, dto);
     return this.todoCheckRepository.save(check);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.todoCheckRepository.delete(id);
+  async remove(id: number, userId: number): Promise<void> {
+    const result = await this.todoCheckRepository.delete({
+      id,
+      creatorId: userId,
+    });
     if (!result.affected) {
       throw new NotFoundException(tr('todo.checkNotFound', { id }));
     }
   }
 
-  private async ensureTodoExists(todoId: number): Promise<void> {
-    const todo = await this.todoRepository.findOne({ where: { id: todoId } });
+  private async ensureTodoExists(
+    todoId: number,
+    userId: number,
+  ): Promise<void> {
+    const todo = await this.todoRepository.findOne({
+      where: { id: todoId, creatorId: userId },
+    });
     if (!todo) {
       throw new NotFoundException(tr('todo.notFound', { id: todoId }));
     }

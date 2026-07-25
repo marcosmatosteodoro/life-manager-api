@@ -17,6 +17,7 @@ import {
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { FeedbackListResponseDto } from './dto/feedback-list-response.dto';
 import { Feedback } from './entities/feedback.entity';
@@ -37,22 +38,25 @@ export class FeedbackController {
   @ApiOkResponse({ type: Feedback })
   @ApiServiceUnavailableResponse({ description: 'Falha no serviço de IA' })
   @ApiTooManyRequestsResponse({ description: 'Limite de requisições excedido' })
-  generate(@Body() dto: CreateFeedbackDto) {
-    return this.service.generate(dto);
+  generate(@Body() dto: CreateFeedbackDto, @CurrentUser() userId: number) {
+    return this.service.generate(dto, userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista os feedbacks salvos' })
   @ApiOkResponse({ type: FeedbackListResponseDto })
-  findAll() {
-    return this.service.findAll();
+  findAll(@CurrentUser() userId: number) {
+    return this.service.findAll(userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um feedback por id' })
   @ApiOkResponse({ type: Feedback })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.findOne(id, userId);
   }
 }

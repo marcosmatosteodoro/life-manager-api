@@ -18,6 +18,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateTodoCheckDto } from './dto/create-todo-check.dto';
 import { TodoCheckListResponseDto } from './dto/todo-check-list-response.dto';
 import { TodoCheckQueryDto } from './dto/todo-check-query.dto';
@@ -36,31 +37,34 @@ export class TodoCheckController {
     summary: 'Checks de hoje (cria os que faltam para os afazeres do dia)',
   })
   @ApiOkResponse({ type: TodoCheck, isArray: true })
-  today() {
-    return this.todoCheckService.today();
+  today(@CurrentUser() userId: number) {
+    return this.todoCheckService.today(userId);
   }
 
   @Post()
   @ApiOperation({ summary: 'Cria um check para um afazer numa data' })
   @ApiOkResponse({ type: TodoCheck })
   @ApiNotFoundResponse({ description: 'Afazer (todoId) não encontrado' })
-  create(@Body() dto: CreateTodoCheckDto) {
-    return this.todoCheckService.create(dto);
+  create(@Body() dto: CreateTodoCheckDto, @CurrentUser() userId: number) {
+    return this.todoCheckService.create(dto, userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Histórico de checks (filtro opcional from/to)' })
   @ApiOkResponse({ type: TodoCheckListResponseDto })
-  findAll(@Query() query: TodoCheckQueryDto) {
-    return this.todoCheckService.findAll(query);
+  findAll(@Query() query: TodoCheckQueryDto, @CurrentUser() userId: number) {
+    return this.todoCheckService.findAll(query, userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um check por id' })
   @ApiOkResponse({ type: TodoCheck })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.todoCheckService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.todoCheckService.findOne(id, userId);
   }
 
   @Patch(':id')
@@ -70,8 +74,9 @@ export class TodoCheckController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTodoCheckDto,
+    @CurrentUser() userId: number,
   ) {
-    return this.todoCheckService.update(id, dto);
+    return this.todoCheckService.update(id, dto, userId);
   }
 
   @Delete(':id')
@@ -79,7 +84,7 @@ export class TodoCheckController {
   @ApiOperation({ summary: 'Remove um check' })
   @ApiNoContentResponse({ description: 'Removido com sucesso' })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.todoCheckService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+    return this.todoCheckService.remove(id, userId);
   }
 }

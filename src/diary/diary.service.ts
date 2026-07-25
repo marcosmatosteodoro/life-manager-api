@@ -15,42 +15,52 @@ export class DiaryService {
     private readonly diaryRepository: Repository<Diary>,
   ) {}
 
-  create(createDiaryDto: CreateDiaryDto): Promise<Diary> {
-    const diary = this.diaryRepository.create(createDiaryDto);
+  create(createDiaryDto: CreateDiaryDto, userId: number): Promise<Diary> {
+    const diary = this.diaryRepository.create({
+      ...createDiaryDto,
+      creatorId: userId,
+    });
     return this.diaryRepository.save(diary);
   }
 
-  /** Lista os registros; filtra por type quando informado. */
-  async findAll(type?: DiaryType): Promise<DiaryListResponseDto> {
+  /** Lista os registros do usuário; filtra por type quando informado. */
+  async findAll(
+    userId: number,
+    type?: DiaryType,
+  ): Promise<DiaryListResponseDto> {
     const [rows, count] = await this.diaryRepository.findAndCount({
-      where: type ? { type } : {},
+      where: { creatorId: userId, ...(type ? { type } : {}) },
       order: { day: 'DESC' },
     });
     return { count, rows };
   }
 
-  async findOne(id: number): Promise<Diary> {
-    const diary = await this.diaryRepository.findOne({ where: { id } });
+  async findOne(id: number, userId: number): Promise<Diary> {
+    const diary = await this.diaryRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!diary) {
       throw new NotFoundException(tr('diary.notFound', { id }));
     }
     return diary;
   }
 
-  async update(id: number, updateDiaryDto: UpdateDiaryDto): Promise<Diary> {
-    // preload garante 404 quando o id não existe, sem update silencioso.
-    const diary = await this.diaryRepository.preload({
-      id,
-      ...updateDiaryDto,
-    });
-    if (!diary) {
-      throw new NotFoundException(tr('diary.notFound', { id }));
-    }
+  async update(
+    id: number,
+    updateDiaryDto: UpdateDiaryDto,
+    userId: number,
+  ): Promise<Diary> {
+    // Escopo por dono: só edita se o registro for do usuário.
+    const diary = await this.findOne(id, userId);
+    Object.assign(diary, updateDiaryDto);
     return this.diaryRepository.save(diary);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.diaryRepository.delete(id);
+  async remove(id: number, userId: number): Promise<void> {
+    const result = await this.diaryRepository.delete({
+      id,
+      creatorId: userId,
+    });
     if (!result.affected) {
       throw new NotFoundException(tr('diary.notFound', { id }));
     }

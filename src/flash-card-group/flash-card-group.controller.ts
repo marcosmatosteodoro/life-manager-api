@@ -18,6 +18,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { AbsorbFlashCardGroupDto } from './dto/absorb-flash-card-group.dto';
 import { CreateFlashCardGroupDto } from './dto/create-flash-card-group.dto';
@@ -35,15 +36,15 @@ export class FlashCardGroupController {
   @Post()
   @ApiOperation({ summary: 'Cria um grupo de flashcards' })
   @ApiOkResponse({ type: FlashCardGroup })
-  create(@Body() dto: CreateFlashCardGroupDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateFlashCardGroupDto, @CurrentUser() userId: number) {
+    return this.service.create(dto, userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista os grupos (com flashcards e contagem)' })
   @ApiOkResponse({ type: FlashCardGroupListResponseDto })
-  findAll() {
-    return this.service.findAll();
+  findAll(@CurrentUser() userId: number) {
+    return this.service.findAll(userId);
   }
 
   @Post(':id/absorb')
@@ -57,8 +58,9 @@ export class FlashCardGroupController {
   absorb(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AbsorbFlashCardGroupDto,
+    @CurrentUser() userId: number,
   ) {
-    return this.service.absorb(id, dto.sourceId);
+    return this.service.absorb(id, dto.sourceId, userId);
   }
 
   @Get(':id/review/block')
@@ -67,8 +69,11 @@ export class FlashCardGroupController {
   })
   @ApiOkResponse({ type: FlashCard, isArray: true })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  reviewBlock(@Param('id', ParseIntPipe) id: number) {
-    return this.service.reviewBlock(id);
+  reviewBlock(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.reviewBlock(id, userId);
   }
 
   @Get(':id/review/quiz')
@@ -77,8 +82,11 @@ export class FlashCardGroupController {
   })
   @ApiOkResponse({ type: QuizQuestionDto, isArray: true })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  reviewQuiz(@Param('id', ParseIntPipe) id: number) {
-    return this.service.reviewQuiz(id);
+  reviewQuiz(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.reviewQuiz(id, userId);
   }
 
   @Get(':id/review')
@@ -87,8 +95,8 @@ export class FlashCardGroupController {
   })
   @ApiOkResponse({ type: FlashCard, isArray: true })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  review(@Param('id', ParseIntPipe) id: number) {
-    return this.service.review(id);
+  review(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+    return this.service.review(id, userId);
   }
 
   @Get(':id')
@@ -97,8 +105,11 @@ export class FlashCardGroupController {
   })
   @ApiOkResponse({ type: FlashCardGroup })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.findOne(id, userId);
   }
 
   @Patch(':id')
@@ -108,8 +119,9 @@ export class FlashCardGroupController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateFlashCardGroupDto,
+    @CurrentUser() userId: number,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, userId);
   }
 
   @Delete(':id')
@@ -117,7 +129,7 @@ export class FlashCardGroupController {
   @ApiOperation({ summary: 'Remove um grupo (e seus flashcards)' })
   @ApiNoContentResponse({ description: 'Removido com sucesso' })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+    return this.service.remove(id, userId);
   }
 }

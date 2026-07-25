@@ -51,12 +51,12 @@ export class FeedbackService {
    * Gera um feedback do período: agrega os dados dos módulos, chama a IA e
    * persiste o que foi enviado (inputData + prompt) e o retorno (response).
    */
-  async generate(dto: CreateFeedbackDto): Promise<Feedback> {
+  async generate(dto: CreateFeedbackDto, userId: number): Promise<Feedback> {
     const days = FEEDBACK_PERIOD_DAYS[dto.period];
     const periodEnd = this.today();
     const periodStart = days == null ? null : this.addDays(periodEnd, -days);
 
-    const data = await this.collect(periodStart, periodEnd, dto.period);
+    const data = await this.collect(periodStart, periodEnd, dto.period, userId);
 
     const periodLabel = FEEDBACK_PERIOD_LABELS[dto.period];
     const userPrompt = buildFeedbackInput(periodLabel, data);
@@ -74,20 +74,23 @@ export class FeedbackService {
       inputData: JSON.stringify(data),
       prompt: `${WEEKLY_FEEDBACK_SYSTEM}\n\n${userPrompt}`,
       response,
-      creatorId: dto.creatorId ?? null,
+      creatorId: userId,
     });
     return this.feedbackRepository.save(feedback);
   }
 
-  async findAll(): Promise<FeedbackListResponseDto> {
+  async findAll(userId: number): Promise<FeedbackListResponseDto> {
     const [rows, count] = await this.feedbackRepository.findAndCount({
+      where: { creatorId: userId },
       order: { createdAt: 'DESC' },
     });
     return { count, rows };
   }
 
-  async findOne(id: number): Promise<Feedback> {
-    const feedback = await this.feedbackRepository.findOne({ where: { id } });
+  async findOne(id: number, userId: number): Promise<Feedback> {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!feedback) {
       throw new NotFoundException(tr('feedback.notFound', { id }));
     }
@@ -99,6 +102,7 @@ export class FeedbackService {
     periodStart: string | null,
     periodEnd: string,
     period: CreateFeedbackDto['period'],
+    userId: number,
   ) {
     // Filtros de data (limite inferior; o superior é "hoje", logo dispensável).
     const dateGte = periodStart ? MoreThanOrEqual(periodStart) : undefined;
@@ -106,8 +110,12 @@ export class FeedbackService {
       ? MoreThanOrEqual(new Date(`${periodStart}T00:00:00`))
       : undefined;
 
+    // Escopo por dono: toda agregação só enxerga os registros do usuário.
     const whereDate = <T>(field: keyof T) =>
-      (dateGte ? { [field]: dateGte } : {}) as FindOptionsWhere<T>;
+      ({
+        creatorId: userId,
+        ...(dateGte ? { [field]: dateGte } : {}),
+      }) as unknown as FindOptionsWhere<T>;
 
     const [weights, articles, todoChecks, flashCards, diaries, applies] =
       await Promise.all([
@@ -116,7 +124,10 @@ export class FeedbackService {
           order: { date: 'ASC' },
         }),
         this.articleRepository.find({
-          where: createdGte ? { createdAt: createdGte } : {},
+          where: {
+            creatorId: userId,
+            ...(createdGte ? { createdAt: createdGte } : {}),
+          },
         }),
         this.todoCheckRepository.find({
           where: whereDate<TodoCheck>('date'),
@@ -124,6 +135,7 @@ export class FeedbackService {
         this.flashCardRepository.find({
           // Só cards revisados; com período, apenas os revisados nele.
           where: {
+            creatorId: userId,
             lastReview: periodStart
               ? MoreThanOrEqual(periodStart)
               : Not(IsNull()),

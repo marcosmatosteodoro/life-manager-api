@@ -15,6 +15,8 @@ import { Feedback } from './entities/feedback.entity';
 import { FeedbackPeriod } from './enums/feedback-period.enum';
 import { FeedbackService } from './feedback.service';
 
+const USER_ID = 1;
+
 const repoMock = () => ({
   find: jest.fn().mockResolvedValue([]),
   findOne: jest.fn(),
@@ -104,11 +106,32 @@ describe('FeedbackService', () => {
       applyRepo.find.mockResolvedValue([{ status: ApplyStatus.APPLIED }]);
       aiService.complete.mockResolvedValue('<h3>Feedback</h3>');
 
-      const result = await service.generate({
-        period: FeedbackPeriod.THIRTY_DAYS,
-      });
+      const result = await service.generate(
+        {
+          period: FeedbackPeriod.THIRTY_DAYS,
+        },
+        USER_ID,
+      );
 
       expect(aiService.complete).toHaveBeenCalledTimes(1);
+      // Toda agregação é escopada pelo dono.
+      expect(weightRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ creatorId: USER_ID }),
+        }),
+      );
+      expect(articleRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ creatorId: USER_ID }),
+        }),
+      );
+      expect(flashCardRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ creatorId: USER_ID }),
+        }),
+      );
+      // O feedback salvo carrega o dono.
+      expect(result.creatorId).toBe(USER_ID);
       // save devolve o objeto salvo, então result reflete o que foi persistido.
       expect(result.period).toBe(FeedbackPeriod.THIRTY_DAYS);
       expect(result.response).toBe('<h3>Feedback</h3>');
@@ -131,7 +154,10 @@ describe('FeedbackService', () => {
     it('período "all" não define limite inferior (periodStart null)', async () => {
       aiService.complete.mockResolvedValue('<p>ok</p>');
 
-      const result = await service.generate({ period: FeedbackPeriod.ALL });
+      const result = await service.generate(
+        { period: FeedbackPeriod.ALL },
+        USER_ID,
+      );
 
       expect(result.periodStart).toBeNull();
     });
@@ -142,7 +168,7 @@ describe('FeedbackService', () => {
       );
 
       await expect(
-        service.generate({ period: FeedbackPeriod.SEVEN_DAYS }),
+        service.generate({ period: FeedbackPeriod.SEVEN_DAYS }, USER_ID),
       ).rejects.toThrow(ServiceUnavailableException);
       expect(feedbackRepo.save).not.toHaveBeenCalled();
     });
@@ -153,9 +179,10 @@ describe('FeedbackService', () => {
       const rows = [{ id: 1 } as Feedback];
       feedbackRepo.findAndCount.mockResolvedValue([rows, 1]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
       expect(feedbackRepo.findAndCount).toHaveBeenCalledWith({
+        where: { creatorId: USER_ID },
         order: { createdAt: 'DESC' },
       });
       expect(result).toEqual({ count: 1, rows });
@@ -167,13 +194,17 @@ describe('FeedbackService', () => {
       const entity = { id: 1 } as Feedback;
       feedbackRepo.findOne.mockResolvedValue(entity);
 
-      await expect(service.findOne(1)).resolves.toEqual(entity);
-      expect(feedbackRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      await expect(service.findOne(1, USER_ID)).resolves.toEqual(entity);
+      expect(feedbackRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
     });
 
     it('lança NotFoundException quando não encontrado', async () => {
       feedbackRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

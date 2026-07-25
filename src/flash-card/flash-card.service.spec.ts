@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 // Mock do storage de Blob (não sobe nada de verdade nos testes).
 jest.mock('../common/photo-blob.storage', () => ({
@@ -31,6 +31,8 @@ const createMockRepository = <T extends object>(): MockRepository<T> => ({
   preload: jest.fn(),
   delete: jest.fn(),
 });
+
+const USER_ID = 1;
 
 const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
   id: 1,
@@ -99,19 +101,31 @@ describe('FlashCardService', () => {
       cardRepo.create!.mockReturnValue(entity);
       cardRepo.save!.mockResolvedValue(entity);
 
-      const result = await service.create({
-        term: 'give up',
-        flashCardGroupId: 1,
-      });
+      const result = await service.create(
+        {
+          term: 'give up',
+          flashCardGroupId: 1,
+        },
+        USER_ID,
+      );
 
-      expect(groupRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(groupRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
+      expect(cardRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          term: 'give up',
+          flashCardGroupId: 1,
+          creatorId: USER_ID,
+        }),
+      );
       expect(result.totalReviews).toBe(0);
     });
 
     it('lança NotFoundException quando o grupo não existe', async () => {
       groupRepo.findOne!.mockResolvedValue(null);
       await expect(
-        service.create({ term: 'x', flashCardGroupId: 999 }),
+        service.create({ term: 'x', flashCardGroupId: 999 }, USER_ID),
       ).rejects.toThrow(NotFoundException);
       expect(cardRepo.save).not.toHaveBeenCalled();
     });
@@ -125,8 +139,12 @@ describe('FlashCardService', () => {
       ];
       cardRepo.findAndCount!.mockResolvedValue([rows, 2]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
+      expect(cardRepo.findAndCount).toHaveBeenCalledWith({
+        where: { creatorId: USER_ID },
+        order: { createdAt: 'DESC' },
+      });
       expect(result.count).toBe(2);
       expect(result.rows[0].totalReviews).toBe(3);
       expect(result.rows[1].totalReviews).toBe(0);
@@ -136,43 +154,57 @@ describe('FlashCardService', () => {
       cardRepo.findOne!.mockResolvedValue(
         buildCard({ correctAnswers: 5, wrongAnswers: 2 }),
       );
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, USER_ID);
+      expect(cardRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
       expect(result.totalReviews).toBe(7);
     });
 
     it('findOne lança NotFoundException quando não encontrado', async () => {
       cardRepo.findOne!.mockResolvedValue(null);
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
     it('valida o grupo quando flashCardGroupId é enviado', async () => {
-      const updated = buildCard({ flashCardGroupId: 2 });
       groupRepo.findOne!.mockResolvedValue({ id: 2 });
-      cardRepo.preload!.mockResolvedValue(updated);
-      cardRepo.save!.mockResolvedValue(updated);
+      cardRepo.findOne!.mockResolvedValue(buildCard());
+      cardRepo.save!.mockImplementation((c) => Promise.resolve(c as FlashCard));
 
-      await service.update(1, { flashCardGroupId: 2 });
+      await service.update(1, { flashCardGroupId: 2 }, USER_ID);
 
-      expect(groupRepo.findOne).toHaveBeenCalledWith({ where: { id: 2 } });
+      // Grupo validado com escopo por dono.
+      expect(groupRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 2, creatorId: USER_ID },
+      });
+      // Card carregado com escopo por dono (sem preload).
+      expect(cardRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
     });
 
     it('não valida grupo quando não é enviado', async () => {
-      const updated = buildCard({ term: 'novo termo' });
-      cardRepo.preload!.mockResolvedValue(updated);
-      cardRepo.save!.mockResolvedValue(updated);
+      cardRepo.findOne!.mockResolvedValue(buildCard());
+      cardRepo.save!.mockImplementation((c) => Promise.resolve(c as FlashCard));
 
-      await service.update(1, { term: 'novo termo' });
+      await service.update(1, { term: 'novo termo' }, USER_ID);
 
       expect(groupRepo.findOne).not.toHaveBeenCalled();
+      expect(cardRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
     });
 
     it('lança NotFoundException quando o card não existe', async () => {
-      cardRepo.preload!.mockResolvedValue(undefined);
-      await expect(service.update(999, { term: 'x' })).rejects.toThrow(
+      cardRepo.findOne!.mockResolvedValue(null);
+      await expect(service.update(999, { term: 'x' }, USER_ID)).rejects.toThrow(
         NotFoundException,
       );
+      expect(cardRepo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -182,8 +214,11 @@ describe('FlashCardService', () => {
       cardRepo.findOne!.mockResolvedValue(card);
       cardRepo.save!.mockImplementation((c) => Promise.resolve(c as FlashCard));
 
-      const result = await service.review(1, true);
+      const result = await service.review(1, true, USER_ID);
 
+      expect(cardRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
       expect(result.correctAnswers).toBe(3);
       expect(result.score).toBe(2);
       expect(result.wrongAnswers).toBe(1);
@@ -196,7 +231,7 @@ describe('FlashCardService', () => {
       cardRepo.findOne!.mockResolvedValue(card);
       cardRepo.save!.mockImplementation((c) => Promise.resolve(c as FlashCard));
 
-      const result = await service.review(1, false);
+      const result = await service.review(1, false, USER_ID);
 
       expect(result.wrongAnswers).toBe(1);
       expect(result.score).toBe(-1);
@@ -205,7 +240,7 @@ describe('FlashCardService', () => {
 
     it('lança NotFoundException quando o card não existe', async () => {
       cardRepo.findOne!.mockResolvedValue(null);
-      await expect(service.review(999, true)).rejects.toThrow(
+      await expect(service.review(999, true, USER_ID)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -218,8 +253,11 @@ describe('FlashCardService', () => {
       translation.translate.mockResolvedValue('desistir');
       cardRepo.save!.mockImplementation((c) => Promise.resolve(c as FlashCard));
 
-      const result = await service.translate(1);
+      const result = await service.translate(1, USER_ID);
 
+      expect(cardRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
       expect(translation.translate).toHaveBeenCalledWith('give up');
       expect(result.translation).toBe('desistir');
       expect(cardRepo.save).toHaveBeenCalled();
@@ -229,7 +267,7 @@ describe('FlashCardService', () => {
       const card = buildCard({ translation: 'desistir' });
       cardRepo.findOne!.mockResolvedValue(card);
 
-      const result = await service.translate(1);
+      const result = await service.translate(1, USER_ID);
 
       expect(result.translation).toBe('desistir');
       expect(translation.translate).not.toHaveBeenCalled();
@@ -238,7 +276,9 @@ describe('FlashCardService', () => {
 
     it('lança NotFoundException quando o card não existe', async () => {
       cardRepo.findOne!.mockResolvedValue(null);
-      await expect(service.translate(999)).rejects.toThrow(NotFoundException);
+      await expect(service.translate(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
       expect(translation.translate).not.toHaveBeenCalled();
     });
   });
@@ -254,11 +294,17 @@ describe('FlashCardService', () => {
         Promise.resolve(c as FlashCard[]),
       );
 
-      const result = await service.reviewBatch([
-        { id: 1, correctAnswers: true },
-        { id: 2, correctAnswers: false },
-      ]);
+      const result = await service.reviewBatch(
+        [
+          { id: 1, correctAnswers: true },
+          { id: 2, correctAnswers: false },
+        ],
+        USER_ID,
+      );
 
+      expect(cardRepo.find).toHaveBeenCalledWith({
+        where: { id: In([1, 2]), creatorId: USER_ID },
+      });
       expect(result[0].correctAnswers).toBe(1);
       expect(result[0].score).toBe(1);
       expect(result[1].wrongAnswers).toBe(1);
@@ -268,10 +314,13 @@ describe('FlashCardService', () => {
     it('lança NotFoundException quando algum id não existe', async () => {
       cardRepo.find!.mockResolvedValue([buildCard({ id: 1 })]);
       await expect(
-        service.reviewBatch([
-          { id: 1, correctAnswers: true },
-          { id: 2, correctAnswers: true },
-        ]),
+        service.reviewBatch(
+          [
+            { id: 1, correctAnswers: true },
+            { id: 2, correctAnswers: true },
+          ],
+          USER_ID,
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(cardRepo.save).not.toHaveBeenCalled();
     });
@@ -288,11 +337,17 @@ describe('FlashCardService', () => {
         Promise.resolve(c as FlashCard[]),
       );
 
-      const result = await service.reviewBlock([
-        { id: 1, correctAnswers: 1, wrongAnswers: 2 },
-        { id: 2, correctAnswers: 1, wrongAnswers: 0 },
-      ]);
+      const result = await service.reviewBlock(
+        [
+          { id: 1, correctAnswers: 1, wrongAnswers: 2 },
+          { id: 2, correctAnswers: 1, wrongAnswers: 0 },
+        ],
+        USER_ID,
+      );
 
+      expect(cardRepo.find).toHaveBeenCalledWith({
+        where: { id: In([1, 2]), creatorId: USER_ID },
+      });
       expect(result[0].correctAnswers).toBe(1);
       expect(result[0].wrongAnswers).toBe(2);
       expect(result[0].score).toBe(-1);
@@ -304,39 +359,68 @@ describe('FlashCardService', () => {
     it('lança NotFoundException quando algum id não existe', async () => {
       cardRepo.find!.mockResolvedValue([buildCard({ id: 1 })]);
       await expect(
-        service.reviewBlock([
-          { id: 1, correctAnswers: 1, wrongAnswers: 0 },
-          { id: 2, correctAnswers: 1, wrongAnswers: 0 },
-        ]),
+        service.reviewBlock(
+          [
+            { id: 1, correctAnswers: 1, wrongAnswers: 0 },
+            { id: 2, correctAnswers: 1, wrongAnswers: 0 },
+          ],
+          USER_ID,
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(cardRepo.save).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
-    it('remove quando existe', async () => {
+    it('remove quando existe (escopo por dono)', async () => {
       cardRepo.delete!.mockResolvedValue({ affected: 1, raw: [] });
-      await expect(service.remove(1)).resolves.toBeUndefined();
+      await expect(service.remove(1, USER_ID)).resolves.toBeUndefined();
+      expect(cardRepo.delete).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
     });
 
     it('lança NotFoundException quando nada foi afetado', async () => {
       cardRepo.delete!.mockResolvedValue({ affected: 0, raw: [] });
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('imagem', () => {
-    it('getImage lança NotFound quando não há', async () => {
+    it('getImage lança NotFound quando o card não é do usuário', async () => {
+      cardRepo.findOne!.mockResolvedValue(null);
+      await expect(service.getImage(1, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(cardRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
+    });
+
+    it('getImage lança NotFound quando o card é do usuário mas não há imagem', async () => {
+      cardRepo.findOne!.mockResolvedValue(buildCard());
       imageRepo.findOne!.mockResolvedValue(null);
-      await expect(service.getImage(1)).rejects.toThrow(NotFoundException);
+      await expect(service.getImage(1, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('setImage cria a referência quando não existe', async () => {
       cardRepo.findOne!.mockResolvedValue(buildCard());
       imageRepo.findOne!.mockResolvedValue(null);
-      const result = await service.setImage(1, {
-        data: 'BASE64',
-        mimeType: 'image/jpeg',
+      const result = await service.setImage(
+        1,
+        {
+          data: 'BASE64',
+          mimeType: 'image/jpeg',
+        },
+        USER_ID,
+      );
+      expect(cardRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
       });
       expect(imageRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -352,13 +436,23 @@ describe('FlashCardService', () => {
     it('setImage lança NotFound quando o card não existe', async () => {
       cardRepo.findOne!.mockResolvedValue(null);
       await expect(
-        service.setImage(999, { data: 'X', mimeType: 'image/png' }),
+        service.setImage(999, { data: 'X', mimeType: 'image/png' }, USER_ID),
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('removeImage lança NotFound quando não há imagem', async () => {
+    it('removeImage lança NotFound quando o card não é do usuário', async () => {
+      cardRepo.findOne!.mockResolvedValue(null);
+      await expect(service.removeImage(1, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('removeImage lança NotFound quando o card é do usuário mas não há imagem', async () => {
+      cardRepo.findOne!.mockResolvedValue(buildCard());
       imageRepo.findOne!.mockResolvedValue(null);
-      await expect(service.removeImage(1)).rejects.toThrow(NotFoundException);
+      await expect(service.removeImage(1, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

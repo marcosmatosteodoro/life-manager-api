@@ -3,6 +3,8 @@ import { FlashCard } from './entities/flash-card.entity';
 import { FlashCardController } from './flash-card.controller';
 import { FlashCardService } from './flash-card.service';
 
+const USER_ID = 1;
+
 const buildCard = (overrides: Partial<FlashCard> = {}): FlashCard => ({
   id: 1,
   term: 'give up',
@@ -56,67 +58,72 @@ describe('FlashCardController', () => {
     const created = buildCard();
     service.create.mockResolvedValue(created);
     const dto = { term: 'give up', flashCardGroupId: 1 };
-    await expect(controller.create(dto)).resolves.toEqual(created);
-    expect(service.create).toHaveBeenCalledWith(dto);
+    await expect(controller.create(dto, USER_ID)).resolves.toEqual(created);
+    expect(service.create).toHaveBeenCalledWith(dto, USER_ID);
   });
 
   it('findAll retorna { count, rows }', async () => {
     const payload = { count: 1, rows: [buildCard()] };
     service.findAll.mockResolvedValue(payload);
-    await expect(controller.findAll()).resolves.toEqual(payload);
+    await expect(controller.findAll(USER_ID)).resolves.toEqual(payload);
+    expect(service.findAll).toHaveBeenCalledWith(USER_ID);
   });
 
   it('findOne repassa o id', async () => {
     const card = buildCard();
     service.findOne.mockResolvedValue(card);
-    await expect(controller.findOne(1)).resolves.toEqual(card);
-    expect(service.findOne).toHaveBeenCalledWith(1);
+    await expect(controller.findOne(1, USER_ID)).resolves.toEqual(card);
+    expect(service.findOne).toHaveBeenCalledWith(1, USER_ID);
   });
 
   it('update repassa id e dto', async () => {
     const updated = buildCard({ term: 'novo' });
     service.update.mockResolvedValue(updated);
-    await expect(controller.update(1, { term: 'novo' })).resolves.toEqual(
-      updated,
-    );
-    expect(service.update).toHaveBeenCalledWith(1, { term: 'novo' });
+    await expect(
+      controller.update(1, { term: 'novo' }, USER_ID),
+    ).resolves.toEqual(updated);
+    expect(service.update).toHaveBeenCalledWith(1, { term: 'novo' }, USER_ID);
   });
 
   it('review repassa id e o boolean correctAnswers', async () => {
     const card = buildCard({ correctAnswers: 1, score: 1 });
     service.review.mockResolvedValue(card);
     await expect(
-      controller.review(1, { correctAnswers: true }),
+      controller.review(1, { correctAnswers: true }, USER_ID),
     ).resolves.toEqual(card);
-    expect(service.review).toHaveBeenCalledWith(1, true);
+    expect(service.review).toHaveBeenCalledWith(1, true, USER_ID);
   });
 
   it('reviewBatch repassa o array', async () => {
     const cards = [buildCard()];
     service.reviewBatch.mockResolvedValue(cards);
     const items = [{ id: 1, correctAnswers: true }];
-    await expect(controller.reviewBatch(items)).resolves.toEqual(cards);
-    expect(service.reviewBatch).toHaveBeenCalledWith(items);
+    await expect(controller.reviewBatch(items, USER_ID)).resolves.toEqual(
+      cards,
+    );
+    expect(service.reviewBatch).toHaveBeenCalledWith(items, USER_ID);
   });
 
   it('reviewBlock repassa o array', async () => {
     const cards = [buildCard()];
     service.reviewBlock.mockResolvedValue(cards);
     const items = [{ id: 1, correctAnswers: 1, wrongAnswers: 2 }];
-    await expect(controller.reviewBlock(items)).resolves.toEqual(cards);
-    expect(service.reviewBlock).toHaveBeenCalledWith(items);
+    await expect(controller.reviewBlock(items, USER_ID)).resolves.toEqual(
+      cards,
+    );
+    expect(service.reviewBlock).toHaveBeenCalledWith(items, USER_ID);
   });
 
   it('translate repassa o id', async () => {
     const card = buildCard({ translation: 'desistir' });
     service.translate.mockResolvedValue(card);
-    await expect(controller.translate(1)).resolves.toEqual(card);
-    expect(service.translate).toHaveBeenCalledWith(1);
+    await expect(controller.translate(1, USER_ID)).resolves.toEqual(card);
+    expect(service.translate).toHaveBeenCalledWith(1, USER_ID);
   });
 
   it('remove repassa o id', async () => {
     service.remove.mockResolvedValue(undefined);
-    await expect(controller.remove(1)).resolves.toBeUndefined();
-    expect(service.remove).toHaveBeenCalledWith(1);
+    await expect(controller.remove(1, USER_ID)).resolves.toBeUndefined();
+    expect(service.remove).toHaveBeenCalledWith(1, USER_ID);
   });
 });

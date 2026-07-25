@@ -20,6 +20,7 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { DiaryService } from './diary.service';
 import { CreateDiaryDto } from './dto/create-diary.dto';
 import { DiaryListResponseDto } from './dto/diary-list-response.dto';
@@ -35,8 +36,11 @@ export class DiaryController {
   @Post()
   @ApiOperation({ summary: 'Cria um registro de diário' })
   @ApiOkResponse({ type: Diary })
-  create(@Body() createDiaryDto: CreateDiaryDto) {
-    return this.diaryService.create(createDiaryDto);
+  create(
+    @Body() createDiaryDto: CreateDiaryDto,
+    @CurrentUser() userId: number,
+  ) {
+    return this.diaryService.create(createDiaryDto, userId);
   }
 
   @Get()
@@ -44,18 +48,22 @@ export class DiaryController {
   @ApiQuery({ name: 'type', enum: DiaryType, required: false })
   @ApiOkResponse({ type: DiaryListResponseDto })
   findAll(
+    @CurrentUser() userId: number,
     @Query('type', new ParseEnumPipe(DiaryType, { optional: true }))
     type?: DiaryType,
   ) {
-    return this.diaryService.findAll(type);
+    return this.diaryService.findAll(userId, type);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um registro por id' })
   @ApiOkResponse({ type: Diary })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.diaryService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.diaryService.findOne(id, userId);
   }
 
   @Patch(':id')
@@ -65,8 +73,9 @@ export class DiaryController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDiaryDto: UpdateDiaryDto,
+    @CurrentUser() userId: number,
   ) {
-    return this.diaryService.update(id, updateDiaryDto);
+    return this.diaryService.update(id, updateDiaryDto, userId);
   }
 
   @Delete(':id')
@@ -74,7 +83,7 @@ export class DiaryController {
   @ApiOperation({ summary: 'Remove um registro' })
   @ApiNoContentResponse({ description: 'Removido com sucesso' })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.diaryService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+    return this.diaryService.remove(id, userId);
   }
 }

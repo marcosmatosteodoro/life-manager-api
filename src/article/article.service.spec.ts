@@ -27,6 +27,8 @@ const createMockRepository = (): MockRepository<Article> => ({
   delete: jest.fn(),
 });
 
+const USER_ID = 1;
+
 const buildArticle = (overrides: Partial<Article> = {}): Article => ({
   id: 1,
   title: 'The Pragmatic Programmer',
@@ -40,7 +42,7 @@ const buildArticle = (overrides: Partial<Article> = {}): Article => ({
   status: ArticleStatus.APPLYING_CORRECTION,
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
-  creatorId: null,
+  creatorId: USER_ID,
   ...overrides,
 });
 
@@ -89,9 +91,12 @@ describe('ArticleService', () => {
       repository.create!.mockReturnValue(entity);
       repository.save!.mockResolvedValue(entity);
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, USER_ID);
 
-      expect(repository.create).toHaveBeenCalledWith(dto);
+      expect(repository.create).toHaveBeenCalledWith({
+        ...dto,
+        creatorId: USER_ID,
+      });
       expect(repository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(entity);
     });
@@ -107,50 +112,61 @@ describe('ArticleService', () => {
     const base = { title: 'X', readingTime: 5 };
 
     it('READING_IN_PROGRESS quando não há timeRead (default)', async () => {
-      const r = await service.create({ ...base });
+      const r = await service.create({ ...base }, USER_ID);
       expect(r.status).toBe(ArticleStatus.READING_IN_PROGRESS);
     });
 
     it('SUMMARY_IN_PROGRESS quando há timeRead mas falta timeWrite ou summary', async () => {
-      const r = await service.create({ ...base, timeRead: 7 });
+      const r = await service.create({ ...base, timeRead: 7 }, USER_ID);
       expect(r.status).toBe(ArticleStatus.SUMMARY_IN_PROGRESS);
 
-      const r2 = await service.create({ ...base, timeRead: 7, timeWrite: 12 });
+      const r2 = await service.create(
+        { ...base, timeRead: 7, timeWrite: 12 },
+        USER_ID,
+      );
       expect(r2.status).toBe(ArticleStatus.SUMMARY_IN_PROGRESS);
     });
 
     it('APPLYING_CORRECTION quando falta apenas summaryCorrected', async () => {
-      const r = await service.create({
-        ...base,
-        timeRead: 7,
-        timeWrite: 12,
-        summary: 'resumo',
-      });
+      const r = await service.create(
+        {
+          ...base,
+          timeRead: 7,
+          timeWrite: 12,
+          summary: 'resumo',
+        },
+        USER_ID,
+      );
       expect(r.status).toBe(ArticleStatus.APPLYING_CORRECTION);
     });
 
     it('COMPLETED quando tudo preenchido (link ignorado)', async () => {
-      const r = await service.create({
-        ...base,
-        timeRead: 7,
-        timeWrite: 12,
-        summary: 'resumo',
-        summaryCorrected: 'corrigido',
-      });
+      const r = await service.create(
+        {
+          ...base,
+          timeRead: 7,
+          timeWrite: 12,
+          summary: 'resumo',
+          summaryCorrected: 'corrigido',
+        },
+        USER_ID,
+      );
       expect(r.status).toBe(ArticleStatus.COMPLETED);
     });
 
     it('recalcula o status no update sobre o registro mesclado', async () => {
-      // Registro existente sem summaryCorrected -> ao preencher, vira COMPLETED.
-      repository.preload!.mockImplementation((data) =>
-        Promise.resolve({
-          timeRead: 7,
-          timeWrite: 12,
-          summary: 'resumo',
-          ...data,
-        } as Article),
+      // Registro existente (do dono) sem summaryCorrected -> ao preencher, vira COMPLETED.
+      repository.findOne!.mockResolvedValue({
+        timeRead: 7,
+        timeWrite: 12,
+        summary: 'resumo',
+        summaryCorrected: null,
+      });
+      const r = await service.update(
+        1,
+        { summaryCorrected: 'corrigido' },
+        USER_ID,
       );
-      const r = await service.update(1, { summaryCorrected: 'corrigido' });
       expect(r.status).toBe(ArticleStatus.COMPLETED);
     });
   });
@@ -160,9 +176,10 @@ describe('ArticleService', () => {
       const rows = [buildArticle({ id: 1 }), buildArticle({ id: 2 })];
       repository.findAndCount!.mockResolvedValue([rows, 2]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
       expect(repository.findAndCount).toHaveBeenCalledWith({
+        where: { creatorId: USER_ID },
         order: { createdAt: 'DESC' },
       });
       expect(result).toEqual({ count: 2, rows });
@@ -171,7 +188,7 @@ describe('ArticleService', () => {
     it('retorna count 0 e rows vazio quando não há registros', async () => {
       repository.findAndCount!.mockResolvedValue([[], 0]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
       expect(result).toEqual({ count: 0, rows: [] });
     });
@@ -182,36 +199,41 @@ describe('ArticleService', () => {
       const entity = buildArticle();
       repository.findOne!.mockResolvedValue(entity);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, USER_ID);
 
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
       expect(result).toEqual(entity);
     });
 
     it('lança NotFoundException quando não encontrado', async () => {
       repository.findOne!.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
-    it('faz preload e salva o registro atualizado', async () => {
-      const updated = buildArticle({ score: 10 });
-      repository.preload!.mockResolvedValue(updated);
-      repository.save!.mockResolvedValue(updated);
+    it('carrega o registro do dono, recalcula o status e salva', async () => {
+      const existing = buildArticle({ score: 8 });
+      repository.findOne!.mockResolvedValue(existing);
+      repository.save!.mockImplementation((a) => Promise.resolve(a as Article));
 
-      const result = await service.update(1, { score: 10 });
+      const result = await service.update(1, { score: 10 }, USER_ID);
 
-      expect(repository.preload).toHaveBeenCalledWith({ id: 1, score: 10 });
-      expect(repository.save).toHaveBeenCalledWith(updated);
-      expect(result).toEqual(updated);
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
+      expect(result.score).toBe(10);
     });
 
-    it('lança NotFoundException quando o id não existe (preload null)', async () => {
-      repository.preload!.mockResolvedValue(undefined);
+    it('lança NotFoundException quando o id não é do usuário', async () => {
+      repository.findOne!.mockResolvedValue(null);
 
-      await expect(service.update(999, { score: 10 })).rejects.toThrow(
+      await expect(service.update(999, { score: 10 }, USER_ID)).rejects.toThrow(
         NotFoundException,
       );
       expect(repository.save).not.toHaveBeenCalled();
@@ -222,14 +244,19 @@ describe('ArticleService', () => {
     it('remove quando o registro existe', async () => {
       repository.delete!.mockResolvedValue({ affected: 1, raw: [] });
 
-      await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      await expect(service.remove(1, USER_ID)).resolves.toBeUndefined();
+      expect(repository.delete).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
     });
 
     it('lança NotFoundException quando nada foi afetado', async () => {
       repository.delete!.mockResolvedValue({ affected: 0, raw: [] });
 
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -245,8 +272,11 @@ describe('ArticleService', () => {
       aiService.complete.mockResolvedValue(validJson);
       repository.save!.mockImplementation((a) => Promise.resolve(a as Article));
 
-      const result = await service.correctSummary(1);
+      const result = await service.correctSummary(1, USER_ID);
 
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
       expect(aiService.complete).toHaveBeenCalledTimes(1);
       expect(result.summaryCorrected).toBe('<p>Corrected summary.</p>');
       expect(result.score).toBe(9);
@@ -260,7 +290,7 @@ describe('ArticleService', () => {
       );
       repository.save!.mockImplementation((a) => Promise.resolve(a as Article));
 
-      const result = await service.correctSummary(1);
+      const result = await service.correctSummary(1, USER_ID);
 
       expect(result.score).toBe(10);
     });
@@ -268,7 +298,7 @@ describe('ArticleService', () => {
     it('lança NotFound quando o artigo não existe', async () => {
       repository.findOne!.mockResolvedValue(null);
 
-      await expect(service.correctSummary(999)).rejects.toThrow(
+      await expect(service.correctSummary(999, USER_ID)).rejects.toThrow(
         NotFoundException,
       );
       expect(aiService.complete).not.toHaveBeenCalled();
@@ -277,7 +307,7 @@ describe('ArticleService', () => {
     it('lança BadRequest quando não há resumo (e não chama a IA)', async () => {
       repository.findOne!.mockResolvedValue(buildArticle({ summary: null }));
 
-      await expect(service.correctSummary(1)).rejects.toThrow(
+      await expect(service.correctSummary(1, USER_ID)).rejects.toThrow(
         BadRequestException,
       );
       expect(aiService.complete).not.toHaveBeenCalled();
@@ -289,7 +319,7 @@ describe('ArticleService', () => {
         new ServiceUnavailableException('indisponível'),
       );
 
-      await expect(service.correctSummary(1)).rejects.toThrow(
+      await expect(service.correctSummary(1, USER_ID)).rejects.toThrow(
         ServiceUnavailableException,
       );
       expect(repository.save).not.toHaveBeenCalled();
@@ -299,7 +329,7 @@ describe('ArticleService', () => {
       repository.findOne!.mockResolvedValue(buildArticle());
       aiService.complete.mockResolvedValue('isto não é json');
 
-      await expect(service.correctSummary(1)).rejects.toThrow(
+      await expect(service.correctSummary(1, USER_ID)).rejects.toThrow(
         ServiceUnavailableException,
       );
       expect(repository.save).not.toHaveBeenCalled();

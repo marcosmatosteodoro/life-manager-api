@@ -22,7 +22,7 @@ describe('DogWalkController', () => {
     service = module.get(DogWalkService);
   });
 
-  it('create repassa o userId (@CurrentUser) e o dto', async () => {
+  it('create repassa o dto (recurso compartilhado, sem userId)', async () => {
     const dto = {
       dogIds: [1],
       locationId: 2,
@@ -32,8 +32,8 @@ describe('DogWalkController', () => {
     };
     service.create.mockResolvedValue({ id: 10 } as never);
 
-    await controller.create(7, dto);
+    await controller.create(dto);
 
-    expect(service.create).toHaveBeenCalledWith(7, dto);
+    expect(service.create).toHaveBeenCalledWith(dto);
   });
 });

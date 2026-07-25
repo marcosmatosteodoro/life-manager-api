@@ -14,13 +14,19 @@ export class ProblemCategoryService {
     private readonly repository: Repository<ProblemCategory>,
   ) {}
 
-  create(dto: CreateProblemCategoryDto): Promise<ProblemCategory> {
-    return this.repository.save(this.repository.create(dto));
+  create(
+    dto: CreateProblemCategoryDto,
+    userId: number,
+  ): Promise<ProblemCategory> {
+    return this.repository.save(
+      this.repository.create({ ...dto, creatorId: userId }),
+    );
   }
 
-  /** Lista as categorias (ordem alfabética) para popular o select do front. */
-  async findAll(): Promise<ProblemCategoryListResponseDto> {
+  /** Lista as categorias do usuário (ordem alfabética) para o select do front. */
+  async findAll(userId: number): Promise<ProblemCategoryListResponseDto> {
     const [rows, count] = await this.repository.findAndCount({
+      where: { creatorId: userId },
       order: { name: 'ASC' },
     });
     return { count, rows };
@@ -29,17 +35,21 @@ export class ProblemCategoryService {
   async update(
     id: number,
     dto: UpdateProblemCategoryDto,
+    userId: number,
   ): Promise<ProblemCategory> {
-    // preload garante 404 quando o id não existe, sem update silencioso.
-    const category = await this.repository.preload({ id, ...dto });
+    // Escopo por dono: só edita se a categoria for do usuário.
+    const category = await this.repository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!category) {
       throw new NotFoundException(tr('problem.categoryNotFound', { id }));
     }
+    Object.assign(category, dto);
     return this.repository.save(category);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.repository.delete(id);
+  async remove(id: number, userId: number): Promise<void> {
+    const result = await this.repository.delete({ id, creatorId: userId });
     if (!result.affected) {
       throw new NotFoundException(tr('problem.categoryNotFound', { id }));
     }

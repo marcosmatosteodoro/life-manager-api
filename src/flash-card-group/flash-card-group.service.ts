@@ -39,8 +39,11 @@ export class FlashCardGroupService {
    *   sequência em vez do termo. A função aleatória vem do dialeto (DbDialect),
    *   portável entre bancos conforme DB_TYPE.
    */
-  async review(id: number): Promise<FlashCard[]> {
-    const exists = await this.groupRepository.countBy({ id });
+  async review(id: number, userId: number): Promise<FlashCard[]> {
+    const exists = await this.groupRepository.countBy({
+      id,
+      creatorId: userId,
+    });
     if (!exists) {
       throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
@@ -62,8 +65,11 @@ export class FlashCardGroupService {
    * aqui cada partida sorteia um subconjunto diferente do grupo — dá variedade
    * e evita repetir sempre os mesmos termos. A função aleatória vem do dialeto.
    */
-  async reviewBlock(id: number): Promise<FlashCard[]> {
-    const exists = await this.groupRepository.countBy({ id });
+  async reviewBlock(id: number, userId: number): Promise<FlashCard[]> {
+    const exists = await this.groupRepository.countBy({
+      id,
+      creatorId: userId,
+    });
     if (!exists) {
       throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
@@ -82,8 +88,11 @@ export class FlashCardGroupService {
    * outros cards do grupo). Mesma ordem do `review` (difíceis/antigos primeiro).
    * Cards sem `value` não viram pergunta. Salvar continua pelo review unitário.
    */
-  async reviewQuiz(id: number): Promise<QuizQuestionDto[]> {
-    const exists = await this.groupRepository.countBy({ id });
+  async reviewQuiz(id: number, userId: number): Promise<QuizQuestionDto[]> {
+    const exists = await this.groupRepository.countBy({
+      id,
+      creatorId: userId,
+    });
     if (!exists) {
       throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
@@ -141,7 +150,11 @@ export class FlashCardGroupService {
    * Tudo numa única transação — se qualquer passo falhar, nada é alterado
    * (não fica flashcard órfão nem grupo excluído pela metade).
    */
-  async absorb(targetId: number, sourceId: number): Promise<FlashCardGroup> {
+  async absorb(
+    targetId: number,
+    sourceId: number,
+    userId: number,
+  ): Promise<FlashCardGroup> {
     if (targetId === sourceId) {
       throw new BadRequestException(tr('flashcards.cannotAbsorbItself'));
     }
@@ -149,6 +162,7 @@ export class FlashCardGroupService {
     await this.groupRepository.manager.transaction(async (manager) => {
       const targetExists = await manager.countBy(FlashCardGroup, {
         id: targetId,
+        creatorId: userId,
       });
       if (!targetExists) {
         throw new NotFoundException(
@@ -157,6 +171,7 @@ export class FlashCardGroupService {
       }
       const sourceExists = await manager.countBy(FlashCardGroup, {
         id: sourceId,
+        creatorId: userId,
       });
       if (!sourceExists) {
         throw new NotFoundException(
@@ -223,7 +238,7 @@ export class FlashCardGroupService {
     });
 
     // Após o commit, retorna o destino já com os flashcards mesclados.
-    return this.findOne(targetId);
+    return this.findOne(targetId, userId);
   }
 
   /** Normaliza o termo para comparação (case-insensitive, sem espaços nas pontas). */
@@ -238,25 +253,29 @@ export class FlashCardGroupService {
     return a >= b ? a : b;
   }
 
-  async create(dto: CreateFlashCardGroupDto): Promise<FlashCardGroup> {
-    const group = this.groupRepository.create(dto);
+  async create(
+    dto: CreateFlashCardGroupDto,
+    userId: number,
+  ): Promise<FlashCardGroup> {
+    const group = this.groupRepository.create({ ...dto, creatorId: userId });
     const saved = await this.groupRepository.save(group);
     // Grupo novo ainda não tem flashcards.
     saved.flashCards = [];
     return this.withComputed(saved);
   }
 
-  async findAll(): Promise<FlashCardGroupListResponseDto> {
+  async findAll(userId: number): Promise<FlashCardGroupListResponseDto> {
     const [rows, count] = await this.groupRepository.findAndCount({
+      where: { creatorId: userId },
       relations: { flashCards: true },
       order: { name: 'ASC' },
     });
     return { count, rows: rows.map((g) => this.withComputed(g)) };
   }
 
-  async findOne(id: number): Promise<FlashCardGroup> {
+  async findOne(id: number, userId: number): Promise<FlashCardGroup> {
     const group = await this.groupRepository.findOne({
-      where: { id },
+      where: { id, creatorId: userId },
       relations: { flashCards: true },
     });
     if (!group) {
@@ -269,18 +288,21 @@ export class FlashCardGroupService {
   async update(
     id: number,
     dto: UpdateFlashCardGroupDto,
+    userId: number,
   ): Promise<FlashCardGroup> {
-    const group = await this.groupRepository.preload({ id, ...dto });
-    if (!group) {
-      throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
-    }
+    // Escopo por dono: só edita se o grupo for do usuário.
+    const group = await this.findOne(id, userId);
+    Object.assign(group, dto);
     await this.groupRepository.save(group);
     // Recarrega com os flashcards para devolver os campos calculados.
-    return this.findOne(id);
+    return this.findOne(id, userId);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.groupRepository.delete(id);
+  async remove(id: number, userId: number): Promise<void> {
+    const result = await this.groupRepository.delete({
+      id,
+      creatorId: userId,
+    });
     if (!result.affected) {
       throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }

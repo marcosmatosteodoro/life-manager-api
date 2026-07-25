@@ -17,7 +17,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateDogWalkDto } from './dto/create-dog-walk.dto';
 import { DogWalkListResponseDto } from './dto/dog-walk-list-response.dto';
 import { UpdateDogWalkDto } from './dto/update-dog-walk.dto';
@@ -33,8 +32,8 @@ export class DogWalkController {
   @ApiOperation({ summary: 'Registra um passeio finalizado' })
   @ApiOkResponse({ type: DogWalk })
   @ApiNotFoundResponse({ description: 'Local ou algum cão não encontrado' })
-  create(@CurrentUser() userId: number, @Body() dto: CreateDogWalkDto) {
-    return this.service.create(userId, dto);
+  create(@Body() dto: CreateDogWalkDto) {
+    return this.service.create(dto);
   }
 
   @Get()
@@ -56,10 +55,7 @@ export class DogWalkController {
   @ApiOperation({ summary: 'Atualiza um passeio' })
   @ApiOkResponse({ type: DogWalk })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateDogWalkDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDogWalkDto) {
     return this.service.update(id, dto);
   }
 

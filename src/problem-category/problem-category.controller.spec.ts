@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProblemCategoryController } from './problem-category.controller';
 import { ProblemCategoryService } from './problem-category.service';
 
+const USER_ID = 1;
+
 describe('ProblemCategoryController', () => {
   let controller: ProblemCategoryController;
   let service: jest.Mocked<ProblemCategoryService>;
@@ -25,26 +27,26 @@ describe('ProblemCategoryController', () => {
     const payload = { count: 1, rows: [{ id: 1, name: 'Bug' } as never] };
     service.findAll.mockResolvedValue(payload);
 
-    await expect(controller.findAll()).resolves.toEqual(payload);
-    expect(service.findAll).toHaveBeenCalledTimes(1);
+    await expect(controller.findAll(USER_ID)).resolves.toEqual(payload);
+    expect(service.findAll).toHaveBeenCalledWith(USER_ID);
   });
 
   it('create delega para o service', async () => {
     const dto = { name: 'Bug', color: '#ef4444' };
     service.create.mockResolvedValue({ id: 1, ...dto } as never);
-    await expect(controller.create(dto)).resolves.toMatchObject(dto);
-    expect(service.create).toHaveBeenCalledWith(dto);
+    await expect(controller.create(dto, USER_ID)).resolves.toMatchObject(dto);
+    expect(service.create).toHaveBeenCalledWith(dto, USER_ID);
   });
 
   it('update repassa id e dto', async () => {
     service.update.mockResolvedValue({ id: 1 } as never);
-    await controller.update(1, { name: 'Novo' });
-    expect(service.update).toHaveBeenCalledWith(1, { name: 'Novo' });
+    await controller.update(1, { name: 'Novo' }, USER_ID);
+    expect(service.update).toHaveBeenCalledWith(1, { name: 'Novo' }, USER_ID);
   });
 
   it('remove repassa o id', async () => {
     service.remove.mockResolvedValue(undefined);
-    await expect(controller.remove(1)).resolves.toBeUndefined();
-    expect(service.remove).toHaveBeenCalledWith(1);
+    await expect(controller.remove(1, USER_ID)).resolves.toBeUndefined();
+    expect(service.remove).toHaveBeenCalledWith(1, USER_ID);
   });
 });

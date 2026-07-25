@@ -14,21 +14,25 @@ export class TodoService {
     private readonly todoRepository: Repository<Todo>,
   ) {}
 
-  create(dto: CreateTodoDto): Promise<Todo> {
-    const todo = this.todoRepository.create(dto);
+  create(dto: CreateTodoDto, userId: number): Promise<Todo> {
+    const todo = this.todoRepository.create({ ...dto, creatorId: userId });
     return this.todoRepository.save(todo);
   }
 
-  async findAll(): Promise<TodoListResponseDto> {
+  async findAll(userId: number): Promise<TodoListResponseDto> {
     const [rows, count] = await this.todoRepository.findAndCount({
+      where: { creatorId: userId },
       order: { createdAt: 'DESC' },
     });
     return { count, rows };
   }
 
-  /** Lista as tags distintas já usadas (não-nulas), em ordem alfabética. */
-  async tags(): Promise<string[]> {
-    const rows = await this.todoRepository.find({ select: { tag: true } });
+  /** Lista as tags distintas do usuário (não-nulas), em ordem alfabética. */
+  async tags(userId: number): Promise<string[]> {
+    const rows = await this.todoRepository.find({
+      where: { creatorId: userId },
+      select: { tag: true },
+    });
     const set = new Set<string>();
     for (const r of rows) {
       const tag = r.tag?.trim();
@@ -37,26 +41,26 @@ export class TodoService {
     return [...set].sort((a, b) => a.localeCompare(b));
   }
 
-  async findOne(id: number): Promise<Todo> {
-    const todo = await this.todoRepository.findOne({ where: { id } });
+  async findOne(id: number, userId: number): Promise<Todo> {
+    const todo = await this.todoRepository.findOne({
+      where: { id, creatorId: userId },
+    });
     if (!todo) {
       throw new NotFoundException(tr('todo.notFound', { id }));
     }
     return todo;
   }
 
-  async update(id: number, dto: UpdateTodoDto): Promise<Todo> {
-    // preload garante 404 quando o id não existe, sem update silencioso.
-    const todo = await this.todoRepository.preload({ id, ...dto });
-    if (!todo) {
-      throw new NotFoundException(tr('todo.notFound', { id }));
-    }
+  async update(id: number, dto: UpdateTodoDto, userId: number): Promise<Todo> {
+    // Escopo por dono: só edita se o afazer for do usuário.
+    const todo = await this.findOne(id, userId);
+    Object.assign(todo, dto);
     return this.todoRepository.save(todo);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, userId: number): Promise<void> {
     // Os checks somem em cascata (FK ON DELETE CASCADE).
-    const result = await this.todoRepository.delete(id);
+    const result = await this.todoRepository.delete({ id, creatorId: userId });
     if (!result.affected) {
       throw new NotFoundException(tr('todo.notFound', { id }));
     }

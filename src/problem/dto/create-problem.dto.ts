@@ -41,7 +41,11 @@ export class CreateProblemDto {
   priority?: ProblemPriority;
 
   // categoryId opcional; `null` limpa a categoria (não é obrigatória).
-  @ApiPropertyOptional({ example: 1, nullable: true, description: 'Id da categoria (FK)' })
+  @ApiPropertyOptional({
+    example: 1,
+    nullable: true,
+    description: 'Id da categoria (FK)',
+  })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsInt()

@@ -4,6 +4,8 @@ import { FeedbackPeriod } from './enums/feedback-period.enum';
 import { FeedbackController } from './feedback.controller';
 import { FeedbackService } from './feedback.service';
 
+const USER_ID = 1;
+
 const buildFeedback = (overrides: Partial<Feedback> = {}): Feedback => ({
   id: 1,
   period: FeedbackPeriod.THIRTY_DAYS,
@@ -14,7 +16,7 @@ const buildFeedback = (overrides: Partial<Feedback> = {}): Feedback => ({
   response: '<h3>Feedback</h3>',
   createdAt: new Date('2026-06-27T08:30:00.000Z'),
   updatedAt: new Date('2026-06-27T08:30:00.000Z'),
-  creatorId: null,
+  creatorId: USER_ID,
   ...overrides,
 });
 
@@ -48,25 +50,29 @@ describe('FeedbackController', () => {
     service.generate.mockResolvedValue(created);
 
     await expect(
-      controller.generate({ period: FeedbackPeriod.THIRTY_DAYS }),
+      controller.generate({ period: FeedbackPeriod.THIRTY_DAYS }, USER_ID),
     ).resolves.toEqual(created);
-    expect(service.generate).toHaveBeenCalledWith({
-      period: FeedbackPeriod.THIRTY_DAYS,
-    });
+    expect(service.generate).toHaveBeenCalledWith(
+      {
+        period: FeedbackPeriod.THIRTY_DAYS,
+      },
+      USER_ID,
+    );
   });
 
   it('findAll retorna { count, rows }', async () => {
     const payload = { count: 1, rows: [buildFeedback()] };
     service.findAll.mockResolvedValue(payload);
 
-    await expect(controller.findAll()).resolves.toEqual(payload);
+    await expect(controller.findAll(USER_ID)).resolves.toEqual(payload);
+    expect(service.findAll).toHaveBeenCalledWith(USER_ID);
   });
 
   it('findOne repassa o id', async () => {
     const entity = buildFeedback();
     service.findOne.mockResolvedValue(entity);
 
-    await expect(controller.findOne(1)).resolves.toEqual(entity);
-    expect(service.findOne).toHaveBeenCalledWith(1);
+    await expect(controller.findOne(1, USER_ID)).resolves.toEqual(entity);
+    expect(service.findOne).toHaveBeenCalledWith(1, USER_ID);
   });
 });

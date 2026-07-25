@@ -20,8 +20,8 @@ export class DogWalkService {
     private readonly locationRepository: Repository<DogWalkLocation>,
   ) {}
 
-  /** Cria o passeio (chamado ao "Finalizar"); creatorId = usuário logado. */
-  async create(userId: number, dto: CreateDogWalkDto): Promise<DogWalk> {
+  /** Cria o passeio (chamado ao "Finalizar"). Recurso COMPARTILHADO: sem dono. */
+  async create(dto: CreateDogWalkDto): Promise<DogWalk> {
     await this.ensureLocationExists(dto.locationId);
     const dogs = await this.resolveDogs(dto.dogIds);
     const walk = this.repository.create({
@@ -30,7 +30,7 @@ export class DogWalkService {
       durationSeconds: dto.durationSeconds,
       locationId: dto.locationId,
       dogs,
-      creatorId: Number.isFinite(userId) ? userId : null,
+      creatorId: null,
     });
     const saved = await this.repository.save(walk);
     return this.findOne(saved.id);
@@ -62,7 +62,8 @@ export class DogWalkService {
       await this.ensureLocationExists(dto.locationId);
       walk.locationId = dto.locationId;
     }
-    if (dto.dogIds !== undefined) walk.dogs = await this.resolveDogs(dto.dogIds);
+    if (dto.dogIds !== undefined)
+      walk.dogs = await this.resolveDogs(dto.dogIds);
     if (dto.startedAt !== undefined) walk.startedAt = new Date(dto.startedAt);
     if (dto.endedAt !== undefined) walk.endedAt = new Date(dto.endedAt);
     if (dto.durationSeconds !== undefined) {

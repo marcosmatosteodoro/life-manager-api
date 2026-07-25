@@ -26,10 +26,12 @@ export class ProblemService {
     private readonly categoryRepository: Repository<ProblemCategory>,
   ) {}
 
-  /** Cria no fim da lista (position = maior + 1). */
-  async create(dto: CreateProblemDto): Promise<Problem> {
-    if (dto.categoryId != null) await this.ensureCategoryExists(dto.categoryId);
-    const next = (await this.maxPosition(this.repository.manager)) + 1;
+  /** Cria no fim da lista do usuário (position = maior + 1). */
+  async create(dto: CreateProblemDto, userId: number): Promise<Problem> {
+    if (dto.categoryId != null) {
+      await this.ensureCategoryExists(dto.categoryId, userId);
+    }
+    const next = (await this.maxPosition(this.repository.manager, userId)) + 1;
     const problem = this.repository.create({
       title: dto.title,
       description: dto.description ?? null,
@@ -37,24 +39,27 @@ export class ProblemService {
       priority: dto.priority ?? DEFAULT_PRIORITY,
       position: next,
       categoryId: dto.categoryId ?? null,
-      creatorId: dto.creatorId ?? null,
+      creatorId: userId,
     });
     return this.repository.save(problem);
   }
 
-  /** Lista os problemas (opcionalmente por status), na ordem manual (position ASC). */
-  async findAll(status?: ProblemStatus): Promise<ProblemListResponseDto> {
+  /** Lista os problemas do usuário (opcional por status), na ordem manual. */
+  async findAll(
+    userId: number,
+    status?: ProblemStatus,
+  ): Promise<ProblemListResponseDto> {
     const rows = await this.repository.find({
-      where: status ? { status } : {},
+      where: { creatorId: userId, ...(status ? { status } : {}) },
       relations: { category: true },
       order: { position: 'ASC' },
     });
     return { count: rows.length, rows };
   }
 
-  async findOne(id: number): Promise<Problem> {
+  async findOne(id: number, userId: number): Promise<Problem> {
     const problem = await this.repository.findOne({
-      where: { id },
+      where: { id, creatorId: userId },
       relations: { category: true },
     });
     if (!problem) {
@@ -64,8 +69,12 @@ export class ProblemService {
   }
 
   /** Edita título, descrição, status e/ou categoria (a position muda no reorder). */
-  async update(id: number, dto: UpdateProblemDto): Promise<Problem> {
-    const problem = await this.findOne(id);
+  async update(
+    id: number,
+    dto: UpdateProblemDto,
+    userId: number,
+  ): Promise<Problem> {
+    const problem = await this.findOne(id, userId);
     if (dto.title !== undefined) problem.title = dto.title;
     if (dto.description !== undefined) {
       problem.description = dto.description ?? null;
@@ -73,7 +82,9 @@ export class ProblemService {
     if (dto.status !== undefined) problem.status = dto.status;
     if (dto.priority !== undefined) problem.priority = dto.priority;
     if (dto.categoryId !== undefined) {
-      if (dto.categoryId != null) await this.ensureCategoryExists(dto.categoryId);
+      if (dto.categoryId != null) {
+        await this.ensureCategoryExists(dto.categoryId, userId);
+      }
       problem.categoryId = dto.categoryId;
     }
     return this.repository.save(problem);
@@ -83,9 +94,14 @@ export class ProblemService {
    * Reordena TODOS os problemas conforme a lista de ids (position = índice + 1).
    * Exige exatamente o conjunto existente (sem faltar/sobrar nem duplicar).
    */
-  async reorder(orderedIds: number[]): Promise<ProblemListResponseDto> {
+  async reorder(
+    orderedIds: number[],
+    userId: number,
+  ): Promise<ProblemListResponseDto> {
     return this.repository.manager.transaction(async (manager) => {
-      const all = await manager.find(Problem, {});
+      const all = await manager.find(Problem, {
+        where: { creatorId: userId },
+      });
 
       const existingIds = new Set(all.map((p) => p.id));
       const uniqueGiven = new Set(orderedIds);
@@ -113,38 +129,53 @@ export class ProblemService {
   }
 
   /** Remove e compacta as posições seguintes (decrementa quem vinha depois). */
-  async remove(id: number): Promise<void> {
+  async remove(id: number, userId: number): Promise<void> {
     await this.repository.manager.transaction(async (manager) => {
-      const problem = await manager.findOne(Problem, { where: { id } });
+      const problem = await manager.findOne(Problem, {
+        where: { id, creatorId: userId },
+      });
       if (!problem) {
         throw new NotFoundException(tr('problem.notFound', { id }));
       }
       const oldPosition = problem.position;
       await manager.remove(problem);
+      // Compacta só a lista do próprio usuário.
       await manager
         .createQueryBuilder()
         .update(Problem)
         .set({ position: () => 'position - 1' })
-        .where('position > :threshold', { threshold: oldPosition })
+        .where('position > :threshold AND creator_id = :userId', {
+          threshold: oldPosition,
+          userId,
+        })
         .execute();
     });
   }
 
-  /** Garante que a categoria referenciada existe (erro limpo em vez de FK). */
-  private async ensureCategoryExists(categoryId: number): Promise<void> {
+  /** Garante que a categoria referenciada existe E é do usuário (erro limpo). */
+  private async ensureCategoryExists(
+    categoryId: number,
+    userId: number,
+  ): Promise<void> {
     const category = await this.categoryRepository.findOne({
-      where: { id: categoryId },
+      where: { id: categoryId, creatorId: userId },
     });
     if (!category) {
-      throw new NotFoundException(tr('problem.categoryNotFound', { id: categoryId }));
+      throw new NotFoundException(
+        tr('problem.categoryNotFound', { id: categoryId }),
+      );
     }
   }
 
-  /** Maior position existente (0 se não houver). */
-  private async maxPosition(manager: EntityManager): Promise<number> {
+  /** Maior position do usuário (0 se não houver). */
+  private async maxPosition(
+    manager: EntityManager,
+    userId: number,
+  ): Promise<number> {
     const raw = await manager
       .createQueryBuilder(Problem, 'p')
       .select('MAX(p.position)', 'max')
+      .where('p.creatorId = :userId', { userId })
       .getRawOne<{ max: number | null }>();
     return raw?.max ?? 0;
   }

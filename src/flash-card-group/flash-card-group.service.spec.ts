@@ -15,6 +15,8 @@ type MockRepository<T extends object = object> = Partial<
 // Manager transacional usado pelo método absorb.
 type ManagerMock = { transaction: jest.Mock };
 
+const USER_ID = 1;
+
 const createMockRepository = () =>
   ({
     create: jest.fn(),
@@ -111,8 +113,12 @@ describe('FlashCardGroupService', () => {
       repository.create!.mockReturnValue(entity);
       repository.save!.mockResolvedValue(entity);
 
-      const result = await service.create({ name: 'Phrasal Verbs' });
+      const result = await service.create({ name: 'Phrasal Verbs' }, USER_ID);
 
+      expect(repository.create).toHaveBeenCalledWith({
+        name: 'Phrasal Verbs',
+        creatorId: USER_ID,
+      });
       expect(result.flashCardsCount).toBe(0);
       expect(result.flashCards).toEqual([]);
     });
@@ -128,13 +134,14 @@ describe('FlashCardGroupService', () => {
       });
       repository.findAndCount!.mockResolvedValue([[group], 1]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
       expect(result.count).toBe(1);
       expect(result.rows[0].flashCardsCount).toBe(2);
       expect(result.rows[0].flashCards![0].totalReviews).toBe(4);
       expect(result.rows[0].flashCards![1].totalReviews).toBe(2);
       expect(repository.findAndCount).toHaveBeenCalledWith({
+        where: { creatorId: USER_ID },
         relations: { flashCards: true },
         order: { name: 'ASC' },
       });
@@ -146,10 +153,10 @@ describe('FlashCardGroupService', () => {
       const group = buildGroup({ flashCards: [buildCard()] });
       repository.findOne!.mockResolvedValue(group);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, USER_ID);
 
       expect(repository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
+        where: { id: 1, creatorId: USER_ID },
         relations: { flashCards: true },
       });
       expect(result.flashCardsCount).toBe(1);
@@ -157,33 +164,37 @@ describe('FlashCardGroupService', () => {
 
     it('lança NotFoundException quando não encontrado', async () => {
       repository.findOne!.mockResolvedValue(null);
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
     it('atualiza e recarrega o grupo com a contagem', async () => {
-      const updated = buildGroup({ name: 'Novo nome' });
-      repository.preload!.mockResolvedValue(updated);
-      repository.save!.mockResolvedValue(updated);
+      // findOne é chamado 2x: 1) carrega o dono; 2) recarrega com flashcards.
       repository.findOne!.mockResolvedValue(
         buildGroup({ name: 'Novo nome', flashCards: [buildCard()] }),
       );
+      repository.save!.mockResolvedValue(buildGroup({ name: 'Novo nome' }));
 
-      const result = await service.update(1, { name: 'Novo nome' });
+      const result = await service.update(1, { name: 'Novo nome' }, USER_ID);
 
-      expect(repository.preload).toHaveBeenCalledWith({
-        id: 1,
-        name: 'Novo nome',
+      // Escopo por dono na carga.
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+        relations: { flashCards: true },
       });
+      expect(repository.save).toHaveBeenCalled();
       expect(result.flashCardsCount).toBe(1);
     });
 
     it('lança NotFoundException quando o id não existe', async () => {
-      repository.preload!.mockResolvedValue(undefined);
-      await expect(service.update(999, { name: 'x' })).rejects.toThrow(
+      repository.findOne!.mockResolvedValue(null);
+      await expect(service.update(999, { name: 'x' }, USER_ID)).rejects.toThrow(
         NotFoundException,
       );
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 
@@ -194,8 +205,12 @@ describe('FlashCardGroupService', () => {
         buildCard({ id: 1, correctAnswers: 1, wrongAnswers: 2 }),
       ]);
 
-      const result = await service.review(1);
+      const result = await service.review(1, USER_ID);
 
+      expect(repository.countBy).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
       expect(qb.where).toHaveBeenCalledWith('card.flashCardGroupId = :id', {
         id: 1,
       });
@@ -215,7 +230,9 @@ describe('FlashCardGroupService', () => {
 
     it('lança NotFoundException quando o grupo não existe', async () => {
       repository.countBy!.mockResolvedValue(0);
-      await expect(service.review(999)).rejects.toThrow(NotFoundException);
+      await expect(service.review(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -226,8 +243,12 @@ describe('FlashCardGroupService', () => {
         buildCard({ id: 1, correctAnswers: 1, wrongAnswers: 2 }),
       ]);
 
-      const result = await service.reviewBlock(1);
+      const result = await service.reviewBlock(1, USER_ID);
 
+      expect(repository.countBy).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
       expect(qb.where).toHaveBeenCalledWith('card.flashCardGroupId = :id', {
         id: 1,
       });
@@ -243,7 +264,9 @@ describe('FlashCardGroupService', () => {
 
     it('lança NotFoundException quando o grupo não existe', async () => {
       repository.countBy!.mockResolvedValue(0);
-      await expect(service.reviewBlock(999)).rejects.toThrow(NotFoundException);
+      await expect(service.reviewBlock(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -257,8 +280,12 @@ describe('FlashCardGroupService', () => {
         buildCard({ id: 4, term: 'gather', value: 'reunir' }),
       ]);
 
-      const result = await service.reviewQuiz(1);
+      const result = await service.reviewQuiz(1, USER_ID);
 
+      expect(repository.countBy).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
       expect(result).toHaveLength(4);
       const q1 = result.find((q) => q.id === 1)!;
       expect(q1.term).toBe('give up');
@@ -277,7 +304,7 @@ describe('FlashCardGroupService', () => {
         buildCard({ id: 3, term: 'sem valor', value: null }),
       ]);
 
-      const result = await service.reviewQuiz(1);
+      const result = await service.reviewQuiz(1, USER_ID);
 
       expect(result).toHaveLength(2); // o sem value não vira pergunta
       const q = result[0];
@@ -287,7 +314,9 @@ describe('FlashCardGroupService', () => {
 
     it('lança NotFoundException quando o grupo não existe', async () => {
       repository.countBy!.mockResolvedValue(0);
-      await expect(service.reviewQuiz(999)).rejects.toThrow(NotFoundException);
+      await expect(service.reviewQuiz(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -321,7 +350,7 @@ describe('FlashCardGroupService', () => {
         buildGroup({ flashCards: [buildCard(), buildCard({ id: 2 })] }),
       );
 
-      const result = await service.absorb(1, 2);
+      const result = await service.absorb(1, 2, USER_ID);
 
       // 'beta' não existe no destino: card movido, sem excluir flashcard.
       expect(manager.save).toHaveBeenCalledWith(FlashCard, [
@@ -332,6 +361,15 @@ describe('FlashCardGroupService', () => {
         expect.anything(),
       );
       expect(manager.delete).toHaveBeenCalledWith(FlashCardGroup, 2);
+      // Existência dos dois grupos checada com escopo por dono.
+      expect(manager.countBy).toHaveBeenCalledWith(FlashCardGroup, {
+        id: 1,
+        creatorId: USER_ID,
+      });
+      expect(manager.countBy).toHaveBeenCalledWith(FlashCardGroup, {
+        id: 2,
+        creatorId: USER_ID,
+      });
       expect(manager.countBy).toHaveBeenCalledTimes(2);
       expect(result.flashCardsCount).toBe(2);
     });
@@ -365,7 +403,7 @@ describe('FlashCardGroupService', () => {
         buildGroup({ flashCards: [target] }),
       );
 
-      await service.absorb(1, 2);
+      await service.absorb(1, 2, USER_ID);
 
       // Mantém o card mais antigo (id 1) com contadores somados e revisão mais recente.
       expect(manager.save).toHaveBeenCalledWith(FlashCard, [
@@ -384,7 +422,9 @@ describe('FlashCardGroupService', () => {
     });
 
     it('lança BadRequest quando origem e destino são o mesmo grupo', async () => {
-      await expect(service.absorb(1, 1)).rejects.toThrow(BadRequestException);
+      await expect(service.absorb(1, 1, USER_ID)).rejects.toThrow(
+        BadRequestException,
+      );
       // Nem chega a abrir transação.
       expect(repository.manager.transaction).not.toHaveBeenCalled();
     });
@@ -397,7 +437,9 @@ describe('FlashCardGroupService', () => {
         (cb: (m: unknown) => unknown) => cb(manager),
       );
 
-      await expect(service.absorb(99, 2)).rejects.toThrow(NotFoundException);
+      await expect(service.absorb(99, 2, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
       expect(manager.find).not.toHaveBeenCalled();
       expect(manager.save).not.toHaveBeenCalled();
     });
@@ -411,21 +453,29 @@ describe('FlashCardGroupService', () => {
         (cb: (m: unknown) => unknown) => cb(manager),
       );
 
-      await expect(service.absorb(1, 99)).rejects.toThrow(NotFoundException);
+      await expect(service.absorb(1, 99, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
       expect(manager.find).not.toHaveBeenCalled();
       expect(manager.save).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
-    it('remove quando existe', async () => {
+    it('remove quando existe (escopo por dono)', async () => {
       repository.delete!.mockResolvedValue({ affected: 1, raw: [] });
-      await expect(service.remove(1)).resolves.toBeUndefined();
+      await expect(service.remove(1, USER_ID)).resolves.toBeUndefined();
+      expect(repository.delete).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
     });
 
     it('lança NotFoundException quando nada foi afetado', async () => {
       repository.delete!.mockResolvedValue({ affected: 0, raw: [] });
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

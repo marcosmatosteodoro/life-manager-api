@@ -3,6 +3,8 @@ import { TodoCheck } from './entities/todo-check.entity';
 import { TodoCheckController } from './todo-check.controller';
 import { TodoCheckService } from './todo-check.service';
 
+const USER_ID = 1;
+
 const buildCheck = (overrides: Partial<TodoCheck> = {}): TodoCheck => ({
   id: 1,
   todoId: 1,
@@ -10,7 +12,7 @@ const buildCheck = (overrides: Partial<TodoCheck> = {}): TodoCheck => ({
   checked: false,
   createdAt: new Date('2026-06-28T08:30:00.000Z'),
   updatedAt: new Date('2026-06-28T08:30:00.000Z'),
-  creatorId: null,
+  creatorId: USER_ID,
   ...overrides,
 });
 
@@ -38,28 +40,31 @@ describe('TodoCheckController', () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  it('today delega para o service', async () => {
+  it('today delega para o service com o usuário', async () => {
     const checks = [buildCheck()];
     service.today.mockResolvedValue(checks);
-    await expect(controller.today()).resolves.toEqual(checks);
-    expect(service.today).toHaveBeenCalled();
+    await expect(controller.today(USER_ID)).resolves.toEqual(checks);
+    expect(service.today).toHaveBeenCalledWith(USER_ID);
   });
 
-  it('update repassa id e dto', async () => {
+  it('update repassa id, dto e usuário', async () => {
     const check = buildCheck({ checked: true });
     service.update.mockResolvedValue(check);
-    await expect(controller.update(1, { checked: true })).resolves.toEqual(
-      check,
-    );
-    expect(service.update).toHaveBeenCalledWith(1, { checked: true });
+    await expect(
+      controller.update(1, { checked: true }, USER_ID),
+    ).resolves.toEqual(check);
+    expect(service.update).toHaveBeenCalledWith(1, { checked: true }, USER_ID);
   });
 
-  it('findAll repassa o query', async () => {
+  it('findAll repassa o query e o usuário', async () => {
     const payload = { count: 1, rows: [buildCheck()] };
     service.findAll.mockResolvedValue(payload);
-    await expect(controller.findAll({ from: '2026-06-01' })).resolves.toEqual(
-      payload,
+    await expect(
+      controller.findAll({ from: '2026-06-01' }, USER_ID),
+    ).resolves.toEqual(payload);
+    expect(service.findAll).toHaveBeenCalledWith(
+      { from: '2026-06-01' },
+      USER_ID,
     );
-    expect(service.findAll).toHaveBeenCalledWith({ from: '2026-06-01' });
   });
 });

@@ -5,6 +5,8 @@ import { Problem } from './entities/problem.entity';
 import { ProblemController } from './problem.controller';
 import { ProblemService } from './problem.service';
 
+const USER_ID = 1;
+
 const buildProblem = (overrides: Partial<Problem> = {}): Problem => ({
   id: 1,
   title: 'Marcar consulta no dentista',
@@ -53,32 +55,34 @@ describe('ProblemController', () => {
     const created = buildProblem();
     service.create.mockResolvedValue(created);
 
-    await expect(controller.create(dto)).resolves.toEqual(created);
-    expect(service.create).toHaveBeenCalledWith(dto);
+    await expect(controller.create(dto, USER_ID)).resolves.toEqual(created);
+    expect(service.create).toHaveBeenCalledWith(dto, USER_ID);
   });
 
   it('findAll repassa um status válido para o service', async () => {
     const payload = { count: 1, rows: [buildProblem()] };
     service.findAll.mockResolvedValue(payload);
 
-    await expect(controller.findAll('em_progresso')).resolves.toEqual(payload);
-    expect(service.findAll).toHaveBeenCalledWith('em_progresso');
+    await expect(controller.findAll(USER_ID, 'em_progresso')).resolves.toEqual(
+      payload,
+    );
+    expect(service.findAll).toHaveBeenCalledWith(USER_ID, 'em_progresso');
   });
 
   it('findAll trata status inválido como sem filtro (undefined)', async () => {
     service.findAll.mockResolvedValue({ count: 0, rows: [] });
 
-    await controller.findAll('lixo' as never);
+    await controller.findAll(USER_ID, 'lixo' as never);
 
-    expect(service.findAll).toHaveBeenCalledWith(undefined);
+    expect(service.findAll).toHaveBeenCalledWith(USER_ID, undefined);
   });
 
   it('findOne repassa o id para o service', async () => {
     const entity = buildProblem();
     service.findOne.mockResolvedValue(entity);
 
-    await expect(controller.findOne(1)).resolves.toEqual(entity);
-    expect(service.findOne).toHaveBeenCalledWith(1);
+    await expect(controller.findOne(1, USER_ID)).resolves.toEqual(entity);
+    expect(service.findOne).toHaveBeenCalledWith(1, USER_ID);
   });
 
   it('update repassa id e dto para o service', async () => {
@@ -86,24 +90,24 @@ describe('ProblemController', () => {
     const updated = buildProblem({ status: 'concluido' });
     service.update.mockResolvedValue(updated);
 
-    await expect(controller.update(1, dto)).resolves.toEqual(updated);
-    expect(service.update).toHaveBeenCalledWith(1, dto);
+    await expect(controller.update(1, dto, USER_ID)).resolves.toEqual(updated);
+    expect(service.update).toHaveBeenCalledWith(1, dto, USER_ID);
   });
 
   it('remove repassa o id e resolve void', async () => {
     service.remove.mockResolvedValue(undefined);
 
-    await expect(controller.remove(1)).resolves.toBeUndefined();
-    expect(service.remove).toHaveBeenCalledWith(1);
+    await expect(controller.remove(1, USER_ID)).resolves.toBeUndefined();
+    expect(service.remove).toHaveBeenCalledWith(1, USER_ID);
   });
 
   it('reorder repassa orderedIds para o service', async () => {
     const payload = { count: 2, rows: [buildProblem()] };
     service.reorder.mockResolvedValue(payload);
 
-    await expect(controller.reorder({ orderedIds: [2, 1] })).resolves.toEqual(
-      payload,
-    );
-    expect(service.reorder).toHaveBeenCalledWith([2, 1]);
+    await expect(
+      controller.reorder({ orderedIds: [2, 1] }, USER_ID),
+    ).resolves.toEqual(payload);
+    expect(service.reorder).toHaveBeenCalledWith([2, 1], USER_ID);
   });
 });

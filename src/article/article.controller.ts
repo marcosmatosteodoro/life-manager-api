@@ -21,6 +21,7 @@ import {
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { ArticleService } from './article.service';
 import { ArticleListResponseDto } from './dto/article-list-response.dto';
 import { CreateArticleDto } from './dto/create-article.dto';
@@ -35,8 +36,11 @@ export class ArticleController {
   @Post()
   @ApiOperation({ summary: 'Cria um artigo' })
   @ApiOkResponse({ type: Article })
-  create(@Body() createArticleDto: CreateArticleDto) {
-    return this.articleService.create(createArticleDto);
+  create(
+    @Body() createArticleDto: CreateArticleDto,
+    @CurrentUser() userId: number,
+  ) {
+    return this.articleService.create(createArticleDto, userId);
   }
 
   // Endpoint pago (IA): rate limit estrito por usuário — 5/min basta para uso
@@ -52,23 +56,29 @@ export class ArticleController {
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   @ApiServiceUnavailableResponse({ description: 'Falha no serviço de IA' })
   @ApiTooManyRequestsResponse({ description: 'Limite de requisições excedido' })
-  correctSummary(@Param('id', ParseIntPipe) id: number) {
-    return this.articleService.correctSummary(id);
+  correctSummary(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.articleService.correctSummary(id, userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista os artigos' })
   @ApiOkResponse({ type: ArticleListResponseDto })
-  findAll() {
-    return this.articleService.findAll();
+  findAll(@CurrentUser() userId: number) {
+    return this.articleService.findAll(userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um artigo por id' })
   @ApiOkResponse({ type: Article })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.articleService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.articleService.findOne(id, userId);
   }
 
   @Patch(':id')
@@ -78,8 +88,9 @@ export class ArticleController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateArticleDto: UpdateArticleDto,
+    @CurrentUser() userId: number,
   ) {
-    return this.articleService.update(id, updateArticleDto);
+    return this.articleService.update(id, updateArticleDto, userId);
   }
 
   @Delete(':id')
@@ -87,7 +98,7 @@ export class ArticleController {
   @ApiOperation({ summary: 'Remove um artigo' })
   @ApiNoContentResponse({ description: 'Removido com sucesso' })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.articleService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+    return this.articleService.remove(id, userId);
   }
 }

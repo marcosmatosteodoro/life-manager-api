@@ -34,7 +34,10 @@ export class Problem {
   @Column({ type: 'int', nullable: false })
   position: number;
 
-  @ApiProperty({ example: 'Escolher o convênio e ligar para agendar.', nullable: true })
+  @ApiProperty({
+    example: 'Escolher o convênio e ligar para agendar.',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
@@ -65,7 +68,11 @@ export class Problem {
   updatedAt: Date;
 
   // categoryId — FK opcional para problem_category (categoria não é obrigatória).
-  @ApiProperty({ example: 1, nullable: true, description: 'Id da categoria (FK)' })
+  @ApiProperty({
+    example: 1,
+    nullable: true,
+    description: 'Id da categoria (FK)',
+  })
   @Column({ name: 'category_id', type: 'int', nullable: true })
   categoryId: number | null;
 

@@ -21,6 +21,8 @@ const createMockRepository = (): MockRepository<Weight> => ({
   delete: jest.fn(),
 });
 
+const USER_ID = 1;
+
 const buildWeight = (overrides: Partial<Weight> = {}): Weight => ({
   id: 1,
   value: 81.55,
@@ -28,7 +30,7 @@ const buildWeight = (overrides: Partial<Weight> = {}): Weight => ({
   time: '08:30:00',
   createdAt: new Date('2026-06-22T08:30:00.000Z'),
   updatedAt: new Date('2026-06-22T08:30:00.000Z'),
-  creatorId: null,
+  creatorId: USER_ID,
   ...overrides,
 });
 
@@ -64,9 +66,12 @@ describe('WeightService', () => {
       repository.create!.mockReturnValue(entity);
       repository.save!.mockResolvedValue(entity);
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, USER_ID);
 
-      expect(repository.create).toHaveBeenCalledWith(dto);
+      expect(repository.create).toHaveBeenCalledWith({
+        ...dto,
+        creatorId: USER_ID,
+      });
       expect(repository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(entity);
     });
@@ -77,9 +82,10 @@ describe('WeightService', () => {
       const rows = [buildWeight({ id: 1 }), buildWeight({ id: 2 })];
       repository.findAndCount!.mockResolvedValue([rows, 2]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
       expect(repository.findAndCount).toHaveBeenCalledWith({
+        where: { creatorId: USER_ID },
         order: { date: 'DESC', time: 'DESC' },
       });
       expect(result).toEqual({ count: 2, rows });
@@ -88,7 +94,7 @@ describe('WeightService', () => {
     it('retorna count 0 e rows vazio quando não há registros', async () => {
       repository.findAndCount!.mockResolvedValue([[], 0]);
 
-      const result = await service.findAll();
+      const result = await service.findAll(USER_ID);
 
       expect(result).toEqual({ count: 0, rows: [] });
     });
@@ -99,36 +105,41 @@ describe('WeightService', () => {
       const entity = buildWeight();
       repository.findOne!.mockResolvedValue(entity);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, USER_ID);
 
-      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
       expect(result).toEqual(entity);
     });
 
     it('lança NotFoundException quando não encontrado', async () => {
       repository.findOne!.mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
-    it('faz preload e salva o registro atualizado', async () => {
-      const updated = buildWeight({ value: 82 });
-      repository.preload!.mockResolvedValue(updated);
-      repository.save!.mockResolvedValue(updated);
+    it('carrega o registro do dono e salva o atualizado', async () => {
+      const existing = buildWeight({ value: 81.55 });
+      repository.findOne!.mockResolvedValue(existing);
+      repository.save!.mockImplementation((w) => Promise.resolve(w as Weight));
 
-      const result = await service.update(1, { value: 82 });
+      const result = await service.update(1, { value: 82 }, USER_ID);
 
-      expect(repository.preload).toHaveBeenCalledWith({ id: 1, value: 82 });
-      expect(repository.save).toHaveBeenCalledWith(updated);
-      expect(result).toEqual(updated);
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, creatorId: USER_ID },
+      });
+      expect(result.value).toBe(82);
     });
 
-    it('lança NotFoundException quando o id não existe (preload null)', async () => {
-      repository.preload!.mockResolvedValue(undefined);
+    it('lança NotFoundException quando o id não é do usuário', async () => {
+      repository.findOne!.mockResolvedValue(null);
 
-      await expect(service.update(999, { value: 82 })).rejects.toThrow(
+      await expect(service.update(999, { value: 82 }, USER_ID)).rejects.toThrow(
         NotFoundException,
       );
       expect(repository.save).not.toHaveBeenCalled();
@@ -139,14 +150,19 @@ describe('WeightService', () => {
     it('remove quando o registro existe', async () => {
       repository.delete!.mockResolvedValue({ affected: 1, raw: [] });
 
-      await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      await expect(service.remove(1, USER_ID)).resolves.toBeUndefined();
+      expect(repository.delete).toHaveBeenCalledWith({
+        id: 1,
+        creatorId: USER_ID,
+      });
     });
 
     it('lança NotFoundException quando nada foi afetado', async () => {
       repository.delete!.mockResolvedValue({ affected: 0, raw: [] });
 
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

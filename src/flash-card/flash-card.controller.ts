@@ -20,6 +20,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { PhotoResponseDto } from '../common/dto/photo-response.dto';
 import { SetPhotoDto } from '../common/dto/set-photo.dto';
 import { BlockReviewItemDto } from './dto/block-review-flash-card.dto';
@@ -44,15 +45,15 @@ export class FlashCardController {
   @ApiNotFoundResponse({
     description: 'Grupo (flashCardGroupId) não encontrado',
   })
-  create(@Body() dto: CreateFlashCardDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateFlashCardDto, @CurrentUser() userId: number) {
+    return this.service.create(dto, userId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista os flashcards' })
   @ApiOkResponse({ type: FlashCardListResponseDto })
-  findAll() {
-    return this.service.findAll();
+  findAll(@CurrentUser() userId: number) {
+    return this.service.findAll(userId);
   }
 
   // Estática — precisa vir antes de ':id' para não colidir com o ParseIntPipe.
@@ -63,8 +64,9 @@ export class FlashCardController {
   reviewBatch(
     @Body(new ParseArrayPipe({ items: ReviewFlashCardItemDto }))
     items: ReviewFlashCardItemDto[],
+    @CurrentUser() userId: number,
   ) {
-    return this.service.reviewBatch(items);
+    return this.service.reviewBatch(items, userId);
   }
 
   // Estática — precisa vir antes de ':id'.
@@ -77,8 +79,9 @@ export class FlashCardController {
   reviewBlock(
     @Body(new ParseArrayPipe({ items: BlockReviewItemDto }))
     items: BlockReviewItemDto[],
+    @CurrentUser() userId: number,
   ) {
-    return this.service.reviewBlock(items);
+    return this.service.reviewBlock(items, userId);
   }
 
   @Patch(':id/review')
@@ -88,8 +91,9 @@ export class FlashCardController {
   review(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ReviewFlashCardDto,
+    @CurrentUser() userId: number,
   ) {
-    return this.service.review(id, dto.correctAnswers);
+    return this.service.review(id, dto.correctAnswers, userId);
   }
 
   @Post(':id/translate')
@@ -98,8 +102,11 @@ export class FlashCardController {
   })
   @ApiOkResponse({ type: FlashCard })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  translate(@Param('id', ParseIntPipe) id: number) {
-    return this.service.translate(id);
+  translate(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.translate(id, userId);
   }
 
   // ----- Imagem do card (grupos do tipo 'image') -----
@@ -108,16 +115,23 @@ export class FlashCardController {
   @ApiOperation({ summary: 'Busca a imagem do flashcard (base64)' })
   @ApiOkResponse({ type: PhotoResponseDto })
   @ApiNotFoundResponse({ description: 'Card sem imagem' })
-  getImage(@Param('id', ParseIntPipe) id: number) {
-    return this.service.getImage(id);
+  getImage(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.getImage(id, userId);
   }
 
   @Put(':id/image')
   @ApiOperation({ summary: 'Define/atualiza a imagem do flashcard' })
   @ApiOkResponse({ type: PhotoResponseDto })
   @ApiNotFoundResponse({ description: 'Card não encontrado' })
-  setImage(@Param('id', ParseIntPipe) id: number, @Body() dto: SetPhotoDto) {
-    return this.service.setImage(id, dto);
+  setImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetPhotoDto,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.setImage(id, dto, userId);
   }
 
   @Delete(':id/image')
@@ -125,16 +139,22 @@ export class FlashCardController {
   @ApiOperation({ summary: 'Remove a imagem do flashcard' })
   @ApiNoContentResponse({ description: 'Removido com sucesso' })
   @ApiNotFoundResponse({ description: 'Card sem imagem' })
-  removeImage(@Param('id', ParseIntPipe) id: number) {
-    return this.service.removeImage(id);
+  removeImage(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.removeImage(id, userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um flashcard por id' })
   @ApiOkResponse({ type: FlashCard })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
+    return this.service.findOne(id, userId);
   }
 
   @Patch(':id')
@@ -147,8 +167,9 @@ export class FlashCardController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateFlashCardDto,
+    @CurrentUser() userId: number,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto, userId);
   }
 
   @Delete(':id')
@@ -156,7 +177,7 @@ export class FlashCardController {
   @ApiOperation({ summary: 'Remove um flashcard' })
   @ApiNoContentResponse({ description: 'Removido com sucesso' })
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+    return this.service.remove(id, userId);
   }
 }
