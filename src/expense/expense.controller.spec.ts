@@ -15,6 +15,9 @@ describe('ExpenseController', () => {
     getAudio: jest.fn(),
     setAudio: jest.fn(),
     removeAudio: jest.fn(),
+    listPhotos: jest.fn(),
+    addPhoto: jest.fn(),
+    removePhoto: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -64,5 +67,15 @@ describe('ExpenseController', () => {
     expect(service.setAudio).toHaveBeenCalledWith(3, dto);
     await controller.removeAudio(3);
     expect(service.removeAudio).toHaveBeenCalledWith(3);
+  });
+
+  it('fotos repassam id/dto', async () => {
+    await controller.listPhotos(3);
+    expect(service.listPhotos).toHaveBeenCalledWith(3);
+    const dto = { data: 'AAA', mimeType: 'image/jpeg' };
+    await controller.addPhoto(3, dto);
+    expect(service.addPhoto).toHaveBeenCalledWith(3, dto);
+    await controller.removePhoto(3, 5);
+    expect(service.removePhoto).toHaveBeenCalledWith(3, 5);
   });
 });

@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { AiService } from '../ai/ai.service';
 import { ExpenseCategory } from '../expense-category/entities/expense-category.entity';
 import { ExpenseAudio } from './entities/expense-audio.entity';
+import { ExpensePhoto } from './entities/expense-photo.entity';
 import { Expense } from './entities/expense.entity';
 import { ExpenseService } from './expense.service';
 
@@ -49,6 +50,13 @@ describe('ExpenseService', () => {
     save: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
+  let photoRepo: {
+    find: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    delete: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
   let ai: { complete: jest.Mock };
 
   beforeEach(async () => {
@@ -74,6 +82,19 @@ describe('ExpenseService', () => {
       createQueryBuilder: jest.fn(() => makeCategoryQb(null)),
     };
 
+    photoRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      create: jest.fn((d) => d),
+      save: jest.fn((e) => Promise.resolve({ id: 9, ...e })),
+      delete: jest.fn(),
+      createQueryBuilder: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      })),
+    };
     ai = { complete: jest.fn().mockResolvedValue('<p>análise</p>') };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -81,6 +102,7 @@ describe('ExpenseService', () => {
         ExpenseService,
         { provide: getRepositoryToken(Expense), useValue: repo },
         { provide: getRepositoryToken(ExpenseAudio), useValue: audioRepo },
+        { provide: getRepositoryToken(ExpensePhoto), useValue: photoRepo },
         { provide: getRepositoryToken(ExpenseCategory), useValue: categoryRepo },
         { provide: AiService, useValue: ai },
       ],
@@ -191,6 +213,27 @@ describe('ExpenseService', () => {
         count: 1,
       });
       expect(result.analysis).toBe('<p>análise</p>');
+    });
+  });
+
+  describe('fotos', () => {
+    it('addPhoto valida o gasto e persiste', async () => {
+      repo.findOne.mockResolvedValue({ id: 1 });
+      const result = await service.addPhoto(1, {
+        data: 'AAA',
+        mimeType: 'image/jpeg',
+      });
+      expect(photoRepo.create).toHaveBeenCalledWith({
+        expenseId: 1,
+        data: 'AAA',
+        mimeType: 'image/jpeg',
+      });
+      expect(result).toMatchObject({ mimeType: 'image/jpeg' });
+    });
+
+    it('removePhoto lança NotFound quando nada foi apagado', async () => {
+      photoRepo.delete.mockResolvedValue({ affected: 0 });
+      await expect(service.removePhoto(1, 5)).rejects.toThrow(NotFoundException);
     });
   });
 

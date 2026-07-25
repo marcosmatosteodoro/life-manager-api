@@ -20,11 +20,13 @@ import {
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { AddExpensePhotoDto } from './dto/add-expense-photo.dto';
 import { AnalyzeExpenseDto } from './dto/analyze-expense.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpenseAnalysisResponseDto } from './dto/expense-analysis-response.dto';
 import { ExpenseAudioResponseDto } from './dto/expense-audio-response.dto';
 import { ExpenseListResponseDto } from './dto/expense-list-response.dto';
+import { ExpensePhotoResponseDto } from './dto/expense-photo-response.dto';
 import { ExpenseSummaryResponseDto } from './dto/expense-summary-response.dto';
 import { SetExpenseAudioDto } from './dto/set-expense-audio.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -123,5 +125,37 @@ export class ExpenseController {
   @ApiNotFoundResponse({ description: 'Sem áudio para este gasto' })
   removeAudio(@Param('id', ParseIntPipe) id: number) {
     return this.service.removeAudio(id);
+  }
+
+  // ----- Fotos -----
+
+  @Get(':id/photos')
+  @ApiOperation({ summary: 'Lista as fotos do gasto (base64)' })
+  @ApiOkResponse({ type: ExpensePhotoResponseDto, isArray: true })
+  listPhotos(@Param('id', ParseIntPipe) id: number) {
+    return this.service.listPhotos(id);
+  }
+
+  @Post(':id/photos')
+  @ApiOperation({ summary: 'Adiciona uma foto ao gasto' })
+  @ApiOkResponse({ type: ExpensePhotoResponseDto })
+  @ApiNotFoundResponse({ description: 'Gasto não encontrado' })
+  addPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddExpensePhotoDto,
+  ) {
+    return this.service.addPhoto(id, dto);
+  }
+
+  @Delete(':id/photos/:photoId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove uma foto do gasto' })
+  @ApiNoContentResponse({ description: 'Removido com sucesso' })
+  @ApiNotFoundResponse({ description: 'Foto não encontrada' })
+  removePhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('photoId', ParseIntPipe) photoId: number,
+  ) {
+    return this.service.removePhoto(id, photoId);
   }
 }

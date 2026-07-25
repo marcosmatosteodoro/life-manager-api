@@ -84,4 +84,8 @@ export class Expense {
   // hasAudio — preenchido na listagem (não persistido); indica descrição em voz.
   @ApiProperty({ example: false, description: 'Se o gasto tem descrição em áudio' })
   hasAudio?: boolean;
+
+  // photoCount — preenchido na listagem (não persistido); qtd. de fotos.
+  @ApiProperty({ example: 0, description: 'Quantidade de fotos do gasto' })
+  photoCount?: number;
 }

@@ -5,12 +5,18 @@ import { ExpenseCategory } from '../expense-category/entities/expense-category.e
 import { ExpenseController } from './expense.controller';
 import { ExpenseService } from './expense.service';
 import { ExpenseAudio } from './entities/expense-audio.entity';
+import { ExpensePhoto } from './entities/expense-photo.entity';
 import { Expense } from './entities/expense.entity';
 
 @Module({
   imports: [
     AiModule,
-    TypeOrmModule.forFeature([Expense, ExpenseAudio, ExpenseCategory]),
+    TypeOrmModule.forFeature([
+      Expense,
+      ExpenseAudio,
+      ExpensePhoto,
+      ExpenseCategory,
+    ]),
   ],
   providers: [ExpenseService],
   controllers: [ExpenseController],

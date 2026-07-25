@@ -4,11 +4,13 @@ import { Between, In, Repository } from 'typeorm';
 import { AiService } from '../ai/ai.service';
 import { ExpenseCategory } from '../expense-category/entities/expense-category.entity';
 import { tr } from '../i18n/translate';
+import { AddExpensePhotoDto } from './dto/add-expense-photo.dto';
 import { AnalyzeExpenseDto } from './dto/analyze-expense.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpenseAnalysisResponseDto } from './dto/expense-analysis-response.dto';
 import { ExpenseAudioResponseDto } from './dto/expense-audio-response.dto';
 import { ExpenseListResponseDto } from './dto/expense-list-response.dto';
+import { ExpensePhotoResponseDto } from './dto/expense-photo-response.dto';
 import { ExpenseSummaryResponseDto } from './dto/expense-summary-response.dto';
 import { SetExpenseAudioDto } from './dto/set-expense-audio.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -17,6 +19,7 @@ import {
   EXPENSE_ANALYSIS_SYSTEM,
 } from './prompts/expense-analysis.prompt';
 import { ExpenseAudio } from './entities/expense-audio.entity';
+import { ExpensePhoto } from './entities/expense-photo.entity';
 import { Expense } from './entities/expense.entity';
 
 @Injectable()
@@ -26,6 +29,8 @@ export class ExpenseService {
     private readonly repository: Repository<Expense>,
     @InjectRepository(ExpenseAudio)
     private readonly audioRepository: Repository<ExpenseAudio>,
+    @InjectRepository(ExpensePhoto)
+    private readonly photoRepository: Repository<ExpensePhoto>,
     @InjectRepository(ExpenseCategory)
     private readonly categoryRepository: Repository<ExpenseCategory>,
     private readonly aiService: AiService,
@@ -53,7 +58,7 @@ export class ExpenseService {
       relations: { category: true },
       order: { date: 'DESC', id: 'DESC' },
     });
-    await this.attachHasAudio(rows);
+    await Promise.all([this.attachHasAudio(rows), this.attachPhotoCount(rows)]);
     return { count: rows.length, rows };
   }
 
@@ -256,6 +261,42 @@ export class ExpenseService {
     }
   }
 
+  // ----- Fotos (base64 no Postgres) -----
+
+  /** Fotos do gasto (com base64), buscadas sob demanda. */
+  async listPhotos(id: number): Promise<ExpensePhotoResponseDto[]> {
+    const photos = await this.photoRepository.find({
+      where: { expenseId: id },
+      order: { id: 'ASC' },
+    });
+    return photos.map((p) => ({ id: p.id, data: p.data, mimeType: p.mimeType }));
+  }
+
+  async addPhoto(
+    id: number,
+    dto: AddExpensePhotoDto,
+  ): Promise<ExpensePhotoResponseDto> {
+    await this.findOne(id); // garante 404 se o gasto não existe
+    const saved = await this.photoRepository.save(
+      this.photoRepository.create({
+        expenseId: id,
+        data: dto.data,
+        mimeType: dto.mimeType,
+      }),
+    );
+    return { id: saved.id, data: saved.data, mimeType: saved.mimeType };
+  }
+
+  async removePhoto(id: number, photoId: number): Promise<void> {
+    const result = await this.photoRepository.delete({
+      id: photoId,
+      expenseId: id,
+    });
+    if (!result.affected) {
+      throw new NotFoundException(tr('expense.photoNotFound', { id: photoId }));
+    }
+  }
+
   // ----- Helpers -----
 
   /** Resolve a categoria: id existente, ou findOrCreate por nome, ou null. */
@@ -296,6 +337,20 @@ export class ExpenseService {
     });
     const withAudio = new Set(audios.map((a) => a.expenseId));
     for (const row of rows) row.hasAudio = withAudio.has(row.id);
+  }
+
+  /** Conta fotos por gasto (uma query agregada, sem carregar os blobs). */
+  private async attachPhotoCount(rows: Expense[]): Promise<void> {
+    if (rows.length === 0) return;
+    const counts = await this.photoRepository
+      .createQueryBuilder('p')
+      .select('p.expense_id', 'expenseId')
+      .addSelect('COUNT(*)', 'count')
+      .where('p.expense_id IN (:...ids)', { ids: rows.map((r) => r.id) })
+      .groupBy('p.expense_id')
+      .getRawMany<{ expenseId: number; count: string }>();
+    const byId = new Map(counts.map((c) => [Number(c.expenseId), Number(c.count)]));
+    for (const row of rows) row.photoCount = byId.get(row.id) ?? 0;
   }
 
   private monthStart(d: Date): string {
