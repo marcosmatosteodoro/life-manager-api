@@ -35,6 +35,8 @@ import { DogWalkLocationModule } from './dog-walk-location/dog-walk-location.mod
 import { DogWalkModule } from './dog-walk/dog-walk.module';
 import { DogWeightModule } from './dog-weight/dog-weight.module';
 import { DogDashboardModule } from './dog-dashboard/dog-dashboard.module';
+import { ExpenseCategoryModule } from './expense-category/expense-category.module';
+import { ExpenseModule } from './expense/expense.module';
 import { HomeModule } from './home/home.module';
 
 @Module({
@@ -96,6 +98,8 @@ import { HomeModule } from './home/home.module';
     DogWalkModule,
     DogWeightModule,
     DogDashboardModule,
+    ExpenseCategoryModule,
+    ExpenseModule,
     HomeModule,
   ],
   controllers: [AppController],

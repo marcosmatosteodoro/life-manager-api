@@ -1,0 +1,5 @@
+{
+  "notFound": "Gasto #{id} não encontrado",
+  "categoryNotFound": "Categoria de gasto #{id} não encontrada",
+  "audioNotFound": "Sem áudio para o gasto #{id}"
+}
