@@ -12,6 +12,9 @@ describe('BacklogController', () => {
     reopen: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+    getAudio: jest.fn(),
+    setAudio: jest.fn(),
+    removeAudio: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -57,5 +60,15 @@ describe('BacklogController', () => {
     expect(service.update).toHaveBeenCalledWith(5, { name: 'y' });
     await controller.remove(5);
     expect(service.remove).toHaveBeenCalledWith(5);
+  });
+
+  it('endpoints de áudio repassam id/dto', async () => {
+    await controller.getAudio(5);
+    expect(service.getAudio).toHaveBeenCalledWith(5);
+    const dto = { data: 'AAA', mimeType: 'audio/webm' };
+    await controller.setAudio(5, dto);
+    expect(service.setAudio).toHaveBeenCalledWith(5, dto);
+    await controller.removeAudio(5);
+    expect(service.removeAudio).toHaveBeenCalledWith(5);
   });
 });

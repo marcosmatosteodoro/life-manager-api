@@ -1,10 +1,16 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Corpo JSON até 5 MB: notas de voz vão como base64 (o padrão do Express é
+  // 100 KB). A Vercel ainda limita o corpo em ~4,5 MB, então o front limita o
+  // áudio com folga abaixo disso.
+  app.useBodyParser('json', { limit: '5mb' });
 
   // Confia em 1 hop de proxy (ex.: Vercel) para obter o IP real do cliente em
   // req.ip — usado como chave do rate limit quando não há usuário autenticado.

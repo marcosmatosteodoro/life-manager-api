@@ -1,4 +1,5 @@
 {
   "notFound": "BacklogItem #{id} not found",
-  "reorderMismatch": "The submitted order must contain exactly the pending items."
+  "reorderMismatch": "The submitted order must contain exactly the pending items.",
+  "audioNotFound": "No audio for item #{id}"
 }

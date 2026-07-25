@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BacklogService } from './backlog.service';
+import { BacklogItemAudio } from './entities/backlog-item-audio.entity';
 import { BacklogItem } from './entities/backlog-item.entity';
 
 // QueryBuilder encadeável reutilizado por maxPendingPosition e shiftPendingAfter.
@@ -48,9 +49,23 @@ describe('BacklogService', () => {
     createQueryBuilder: jest.Mock;
   };
   let qb: ReturnType<typeof makeQb>;
+  let audioRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    delete: jest.Mock;
+  };
 
   beforeEach(async () => {
     qb = makeQb();
+    audioRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      create: jest.fn((d: unknown) => d),
+      save: jest.fn((e: unknown) => Promise.resolve(e)),
+      delete: jest.fn(),
+    };
     manager = {
       find: jest.fn(),
       findOne: jest.fn(),
@@ -73,6 +88,7 @@ describe('BacklogService', () => {
       providers: [
         BacklogService,
         { provide: getRepositoryToken(BacklogItem), useValue: repo },
+        { provide: getRepositoryToken(BacklogItemAudio), useValue: audioRepo },
       ],
     }).compile();
     service = module.get(BacklogService);
@@ -209,6 +225,63 @@ describe('BacklogService', () => {
         where: { status: 'concluido' },
         order: { completedAt: 'DESC' },
       });
+    });
+
+    it('marca hasAudio nas rows que têm áudio', async () => {
+      repo.find.mockResolvedValue([buildItem({ id: 1 }), buildItem({ id: 2 })]);
+      audioRepo.find.mockResolvedValue([{ backlogItemId: 2 }]);
+
+      const { rows } = await service.findAll('pendente');
+
+      expect(rows.find((r) => r.id === 1)?.hasAudio).toBe(false);
+      expect(rows.find((r) => r.id === 2)?.hasAudio).toBe(true);
+    });
+  });
+
+  describe('áudio', () => {
+    it('getAudio retorna { data, mimeType }', async () => {
+      audioRepo.findOne.mockResolvedValue({
+        data: 'AAA',
+        mimeType: 'audio/webm',
+      });
+      await expect(service.getAudio(1)).resolves.toEqual({
+        data: 'AAA',
+        mimeType: 'audio/webm',
+      });
+    });
+
+    it('getAudio lança NotFound quando não há áudio', async () => {
+      audioRepo.findOne.mockResolvedValue(null);
+      await expect(service.getAudio(1)).rejects.toThrow(NotFoundException);
+    });
+
+    it('setAudio faz upsert (cria quando não existe)', async () => {
+      repo.findOne.mockResolvedValue(buildItem({ id: 1 })); // item existe
+      audioRepo.findOne.mockResolvedValue(null); // sem áudio ainda
+
+      const result = await service.setAudio(1, {
+        data: 'AAA',
+        mimeType: 'audio/webm',
+      });
+
+      expect(audioRepo.create).toHaveBeenCalledWith({
+        backlogItemId: 1,
+        data: 'AAA',
+        mimeType: 'audio/webm',
+      });
+      expect(result).toEqual({ data: 'AAA', mimeType: 'audio/webm' });
+    });
+
+    it('setAudio lança NotFound quando o item não existe', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(
+        service.setAudio(9, { data: 'AAA', mimeType: 'audio/webm' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('removeAudio lança NotFound quando nada foi apagado', async () => {
+      audioRepo.delete.mockResolvedValue({ affected: 0 });
+      await expect(service.removeAudio(1)).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -21,9 +21,11 @@ import {
 } from '@nestjs/swagger';
 import { BACKLOG_STATUSES, type BacklogStatus } from './backlog.constants';
 import { BacklogService } from './backlog.service';
+import { BacklogAudioResponseDto } from './dto/backlog-audio-response.dto';
 import { BacklogListResponseDto } from './dto/backlog-list-response.dto';
 import { CreateBacklogItemDto } from './dto/create-backlog-item.dto';
 import { ReorderBacklogDto } from './dto/reorder-backlog.dto';
+import { SetBacklogAudioDto } from './dto/set-backlog-audio.dto';
 import { UpdateBacklogItemDto } from './dto/update-backlog-item.dto';
 import { BacklogItem } from './entities/backlog-item.entity';
 
@@ -93,5 +95,35 @@ export class BacklogController {
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
+  }
+
+  // ----- Nota de voz (áudio) do item -----
+
+  @Get(':id/audio')
+  @ApiOperation({ summary: 'Busca a nota de voz do item (base64)' })
+  @ApiOkResponse({ type: BacklogAudioResponseDto })
+  @ApiNotFoundResponse({ description: 'Sem áudio para este item' })
+  getAudio(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getAudio(id);
+  }
+
+  @Post(':id/audio')
+  @ApiOperation({ summary: 'Grava/atualiza a nota de voz do item' })
+  @ApiOkResponse({ type: BacklogAudioResponseDto })
+  @ApiNotFoundResponse({ description: 'Item não encontrado' })
+  setAudio(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetBacklogAudioDto,
+  ) {
+    return this.service.setAudio(id, dto);
+  }
+
+  @Delete(':id/audio')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a nota de voz do item' })
+  @ApiNoContentResponse({ description: 'Removido com sucesso' })
+  @ApiNotFoundResponse({ description: 'Sem áudio para este item' })
+  removeAudio(@Param('id', ParseIntPipe) id: number) {
+    return this.service.removeAudio(id);
   }
 }

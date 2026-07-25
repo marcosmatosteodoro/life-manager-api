@@ -4,11 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { tr } from '../i18n/translate';
+import { BacklogAudioResponseDto } from './dto/backlog-audio-response.dto';
 import { BacklogListResponseDto } from './dto/backlog-list-response.dto';
 import { CreateBacklogItemDto } from './dto/create-backlog-item.dto';
+import { SetBacklogAudioDto } from './dto/set-backlog-audio.dto';
 import { UpdateBacklogItemDto } from './dto/update-backlog-item.dto';
+import { BacklogItemAudio } from './entities/backlog-item-audio.entity';
 import { BacklogItem } from './entities/backlog-item.entity';
 import { type BacklogStatus } from './backlog.constants';
 
@@ -17,6 +20,8 @@ export class BacklogService {
   constructor(
     @InjectRepository(BacklogItem)
     private readonly repository: Repository<BacklogItem>,
+    @InjectRepository(BacklogItemAudio)
+    private readonly audioRepository: Repository<BacklogItemAudio>,
   ) {}
 
   /** Cria um pendente no fim da fila (position = maior + 1). */
@@ -36,32 +41,82 @@ export class BacklogService {
    * `completedAt DESC`. Sem filtro: pendentes e depois concluídos.
    */
   async findAll(status?: BacklogStatus): Promise<BacklogListResponseDto> {
+    let rows: BacklogItem[];
     if (status === 'pendente') {
-      const rows = await this.repository.find({
+      rows = await this.repository.find({
         where: { status: 'pendente' },
         order: { position: 'ASC' },
       });
-      return { count: rows.length, rows };
-    }
-    if (status === 'concluido') {
-      const rows = await this.repository.find({
+    } else if (status === 'concluido') {
+      rows = await this.repository.find({
         where: { status: 'concluido' },
         order: { completedAt: 'DESC' },
       });
-      return { count: rows.length, rows };
+    } else {
+      const [pendentes, concluidos] = await Promise.all([
+        this.repository.find({
+          where: { status: 'pendente' },
+          order: { position: 'ASC' },
+        }),
+        this.repository.find({
+          where: { status: 'concluido' },
+          order: { completedAt: 'DESC' },
+        }),
+      ]);
+      rows = [...pendentes, ...concluidos];
     }
-    const [pendentes, concluidos] = await Promise.all([
-      this.repository.find({
-        where: { status: 'pendente' },
-        order: { position: 'ASC' },
-      }),
-      this.repository.find({
-        where: { status: 'concluido' },
-        order: { completedAt: 'DESC' },
-      }),
-    ]);
-    const rows = [...pendentes, ...concluidos];
+    await this.attachHasAudio(rows);
     return { count: rows.length, rows };
+  }
+
+  /** Marca `hasAudio` sem carregar o blob (uma query pelos ids das rows). */
+  private async attachHasAudio(rows: BacklogItem[]): Promise<void> {
+    if (rows.length === 0) return;
+    const audios = await this.audioRepository.find({
+      where: { backlogItemId: In(rows.map((r) => r.id)) },
+      select: { backlogItemId: true },
+    });
+    const withAudio = new Set(audios.map((a) => a.backlogItemId));
+    for (const row of rows) row.hasAudio = withAudio.has(row.id);
+  }
+
+  /** Nota de voz do item (base64). 404 quando não há. */
+  async getAudio(id: number): Promise<BacklogAudioResponseDto> {
+    const audio = await this.audioRepository.findOne({
+      where: { backlogItemId: id },
+    });
+    if (!audio) {
+      throw new NotFoundException(tr('backlog.audioNotFound', { id }));
+    }
+    return { data: audio.data, mimeType: audio.mimeType };
+  }
+
+  /** Grava/atualiza a nota de voz do item (upsert por backlogItemId). */
+  async setAudio(
+    id: number,
+    dto: SetBacklogAudioDto,
+  ): Promise<BacklogAudioResponseDto> {
+    await this.findOne(id); // garante 404 se o item não existe
+    const existing = await this.audioRepository.findOne({
+      where: { backlogItemId: id },
+    });
+    const audio = existing
+      ? Object.assign(existing, { data: dto.data, mimeType: dto.mimeType })
+      : this.audioRepository.create({
+          backlogItemId: id,
+          data: dto.data,
+          mimeType: dto.mimeType,
+        });
+    const saved = await this.audioRepository.save(audio);
+    return { data: saved.data, mimeType: saved.mimeType };
+  }
+
+  /** Remove a nota de voz do item. 404 quando não há. */
+  async removeAudio(id: number): Promise<void> {
+    const result = await this.audioRepository.delete({ backlogItemId: id });
+    if (!result.affected) {
+      throw new NotFoundException(tr('backlog.audioNotFound', { id }));
+    }
   }
 
   async findOne(id: number): Promise<BacklogItem> {

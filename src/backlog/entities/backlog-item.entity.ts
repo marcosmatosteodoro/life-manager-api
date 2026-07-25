@@ -60,4 +60,8 @@ export class BacklogItem {
   @ApiProperty({ example: 1, nullable: true })
   @Column({ name: 'creator_id', type: 'int', nullable: true })
   creatorId: number | null;
+
+  // hasAudio — preenchido na listagem (não persistido); indica se há nota de voz.
+  @ApiProperty({ example: false, description: 'Se o item tem nota de voz' })
+  hasAudio?: boolean;
 }
