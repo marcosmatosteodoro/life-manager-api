@@ -17,6 +17,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { ExtensionAllowed } from '../auth/extension.decorator';
 import { ApplyService } from './apply.service';
 import { ApplyListResponseDto } from './dto/apply-list-response.dto';
 import { CreateApplyDto } from './dto/create-apply.dto';
@@ -28,6 +29,7 @@ import { Apply } from './entities/apply.entity';
 export class ApplyController {
   constructor(private readonly applyService: ApplyService) {}
 
+  @ExtensionAllowed() // a extensão cria a candidatura (isHuman: false)
   @Post()
   @ApiOperation({ summary: 'Cria uma candidatura' })
   @ApiOkResponse({ type: Apply })

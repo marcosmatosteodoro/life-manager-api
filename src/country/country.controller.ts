@@ -17,6 +17,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { ExtensionAllowed } from '../auth/extension.decorator';
 import { CountryService } from './country.service';
 import { CountryListResponseDto } from './dto/country-list-response.dto';
 import { CreateCountryDto } from './dto/create-country.dto';
@@ -35,6 +36,7 @@ export class CountryController {
     return this.countryService.create(createCountryDto);
   }
 
+  @ExtensionAllowed() // a extensão precisa listar países
   @Get()
   @ApiOperation({ summary: 'Lista os países' })
   @ApiOkResponse({ type: CountryListResponseDto })

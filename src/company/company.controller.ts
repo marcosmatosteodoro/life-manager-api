@@ -17,6 +17,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { ExtensionAllowed } from '../auth/extension.decorator';
 import { CompanyService } from './company.service';
 import { CompanyListResponseDto } from './dto/company-list-response.dto';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -28,6 +29,7 @@ import { Company } from './entities/company.entity';
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
+  @ExtensionAllowed() // a extensão cria empresa se não existir
   @Post()
   @ApiOperation({ summary: 'Cria uma empresa' })
   @ApiOkResponse({ type: Company })
@@ -36,6 +38,7 @@ export class CompanyController {
     return this.companyService.create(createCompanyDto);
   }
 
+  @ExtensionAllowed() // a extensão precisa listar empresas
   @Get()
   @ApiOperation({ summary: 'Lista as empresas' })
   @ApiOkResponse({ type: CompanyListResponseDto })
