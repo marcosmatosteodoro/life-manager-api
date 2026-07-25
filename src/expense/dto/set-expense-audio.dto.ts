@@ -11,9 +11,12 @@ export class SetExpenseAudioDto {
   @MaxLength(MAX_BASE64, { message: 'Áudio muito grande (máx. ~3 MB).' })
   data: string;
 
-  @ApiProperty({ example: 'audio/webm' })
+  // Aceita o tipo + parâmetros do celular (ex.: audio/webm;codecs=opus, audio/mp4).
+  @ApiProperty({ example: 'audio/webm;codecs=opus' })
   @IsString()
-  @Matches(/^audio\/[\w.+-]+$/, { message: 'mimeType deve ser audio/*.' })
+  @Matches(/^audio\/[\w.+-]+(?:;[\w.+=/ -]+)*$/i, {
+    message: 'mimeType deve ser audio/*.',
+  })
   @MaxLength(64)
   mimeType: string;
 }
