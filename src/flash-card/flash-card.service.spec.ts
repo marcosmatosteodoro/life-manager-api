@@ -2,7 +2,18 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
+// Mock do storage de Blob (não sobe nada de verdade nos testes).
+jest.mock('../common/photo-blob.storage', () => ({
+  putProfilePhoto: jest.fn().mockResolvedValue({
+    pathname: 'flashcards/1/p.jpg',
+    url: 'https://blob/x',
+  }),
+  readProfilePhotoBase64: jest.fn().mockResolvedValue('BASE64'),
+  delProfilePhoto: jest.fn().mockResolvedValue(undefined),
+}));
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
+import { FlashCardImage } from './entities/flash-card-image.entity';
 import { FlashCard } from './entities/flash-card.entity';
 import { FlashCardService } from './flash-card.service';
 import { TranslationService } from './translation.service';
@@ -42,6 +53,7 @@ describe('FlashCardService', () => {
   let service: FlashCardService;
   let cardRepo: MockRepository<FlashCard>;
   let groupRepo: MockRepository<FlashCardGroup>;
+  let imageRepo: MockRepository<FlashCardImage>;
   let translation: { translate: jest.Mock };
 
   beforeEach(async () => {
@@ -57,6 +69,13 @@ describe('FlashCardService', () => {
           provide: getRepositoryToken(FlashCardGroup),
           useValue: createMockRepository<FlashCardGroup>(),
         },
+        {
+          provide: getRepositoryToken(FlashCardImage),
+          useValue: {
+            ...createMockRepository<FlashCardImage>(),
+            update: jest.fn(),
+          },
+        },
         { provide: TranslationService, useValue: translation },
       ],
     }).compile();
@@ -64,6 +83,7 @@ describe('FlashCardService', () => {
     service = module.get(FlashCardService);
     cardRepo = module.get(getRepositoryToken(FlashCard));
     groupRepo = module.get(getRepositoryToken(FlashCardGroup));
+    imageRepo = module.get(getRepositoryToken(FlashCardImage));
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -302,6 +322,43 @@ describe('FlashCardService', () => {
     it('lança NotFoundException quando nada foi afetado', async () => {
       cardRepo.delete!.mockResolvedValue({ affected: 0, raw: [] });
       await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('imagem', () => {
+    it('getImage lança NotFound quando não há', async () => {
+      imageRepo.findOne!.mockResolvedValue(null);
+      await expect(service.getImage(1)).rejects.toThrow(NotFoundException);
+    });
+
+    it('setImage cria a referência quando não existe', async () => {
+      cardRepo.findOne!.mockResolvedValue(buildCard());
+      imageRepo.findOne!.mockResolvedValue(null);
+      const result = await service.setImage(1, {
+        data: 'BASE64',
+        mimeType: 'image/jpeg',
+      });
+      expect(imageRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          flashCardId: 1,
+          pathname: 'flashcards/1/p.jpg',
+          url: 'https://blob/x',
+          mimeType: 'image/jpeg',
+        }),
+      );
+      expect(result).toEqual({ data: 'BASE64', mimeType: 'image/jpeg' });
+    });
+
+    it('setImage lança NotFound quando o card não existe', async () => {
+      cardRepo.findOne!.mockResolvedValue(null);
+      await expect(
+        service.setImage(999, { data: 'X', mimeType: 'image/png' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('removeImage lança NotFound quando não há imagem', async () => {
+      imageRepo.findOne!.mockResolvedValue(null);
+      await expect(service.removeImage(1)).rejects.toThrow(NotFoundException);
     });
   });
 });

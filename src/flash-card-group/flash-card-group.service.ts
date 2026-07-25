@@ -6,8 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DbDialect } from '../database/db-dialect';
+import { FlashCardImage } from '../flash-card/entities/flash-card-image.entity';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
-import { attachTotalReviews } from '../flash-card/flash-card.util';
+import {
+  attachHasImage,
+  attachTotalReviews,
+} from '../flash-card/flash-card.util';
 import { CreateFlashCardGroupDto } from './dto/create-flash-card-group.dto';
 import { FlashCardGroupListResponseDto } from './dto/flash-card-group-list-response.dto';
 import { QuizQuestionDto } from './dto/quiz-question.dto';
@@ -22,6 +26,8 @@ export class FlashCardGroupService {
     private readonly groupRepository: Repository<FlashCardGroup>,
     @InjectRepository(FlashCard)
     private readonly flashCardRepository: Repository<FlashCard>,
+    @InjectRepository(FlashCardImage)
+    private readonly imageRepository: Repository<FlashCardImage>,
     private readonly dialect: DbDialect,
   ) {}
 
@@ -45,6 +51,7 @@ export class FlashCardGroupService {
       .addOrderBy('card.lastReview', 'ASC', 'NULLS FIRST')
       .addOrderBy(this.dialect.randomOrder())
       .getMany();
+    await attachHasImage(cards, this.imageRepository);
     return cards.map(attachTotalReviews);
   }
 
@@ -65,6 +72,7 @@ export class FlashCardGroupService {
       .where('card.flashCardGroupId = :id', { id })
       .orderBy(this.dialect.randomOrder())
       .getMany();
+    await attachHasImage(cards, this.imageRepository);
     return cards.map(attachTotalReviews);
   }
 
@@ -254,6 +262,7 @@ export class FlashCardGroupService {
     if (!group) {
       throw new NotFoundException(tr('flashcards.groupNotFound', { id }));
     }
+    await attachHasImage(group.flashCards ?? [], this.imageRepository);
     return this.withComputed(group);
   }
 

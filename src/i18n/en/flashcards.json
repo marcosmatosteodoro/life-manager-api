@@ -1,5 +1,6 @@
 {
   "cardNotFound": "FlashCard #{id} not found",
+  "imageNotFound": "FlashCard #{id} has no image",
   "cardsNotFound": "FlashCard(s) not found: {ids}",
   "groupNotFound": "FlashCardGroup #{id} not found",
   "cannotAbsorbItself": "A group cannot absorb itself",

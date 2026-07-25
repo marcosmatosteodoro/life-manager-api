@@ -94,4 +94,9 @@ export class FlashCard {
   // Campo calculado em runtime (não persistido): correctAnswers + wrongAnswers.
   @ApiProperty({ example: 0, description: 'Total de revisões (runtime)' })
   totalReviews?: number;
+
+  // Campo calculado (não persistido): tem imagem no Blob? (grupos tipo `image`).
+  // O binário vem sob demanda em GET /flash-card/:id/image.
+  @ApiProperty({ example: false, description: 'Tem imagem (runtime)' })
+  hasImage?: boolean;
 }

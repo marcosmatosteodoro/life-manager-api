@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -19,6 +20,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { PhotoResponseDto } from '../common/dto/photo-response.dto';
+import { SetPhotoDto } from '../common/dto/set-photo.dto';
 import { BlockReviewItemDto } from './dto/block-review-flash-card.dto';
 import { CreateFlashCardDto } from './dto/create-flash-card.dto';
 import { FlashCardListResponseDto } from './dto/flash-card-list-response.dto';
@@ -97,6 +100,33 @@ export class FlashCardController {
   @ApiNotFoundResponse({ description: 'Registro não encontrado' })
   translate(@Param('id', ParseIntPipe) id: number) {
     return this.service.translate(id);
+  }
+
+  // ----- Imagem do card (grupos do tipo 'image') -----
+
+  @Get(':id/image')
+  @ApiOperation({ summary: 'Busca a imagem do flashcard (base64)' })
+  @ApiOkResponse({ type: PhotoResponseDto })
+  @ApiNotFoundResponse({ description: 'Card sem imagem' })
+  getImage(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getImage(id);
+  }
+
+  @Put(':id/image')
+  @ApiOperation({ summary: 'Define/atualiza a imagem do flashcard' })
+  @ApiOkResponse({ type: PhotoResponseDto })
+  @ApiNotFoundResponse({ description: 'Card não encontrado' })
+  setImage(@Param('id', ParseIntPipe) id: number, @Body() dto: SetPhotoDto) {
+    return this.service.setImage(id, dto);
+  }
+
+  @Delete(':id/image')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a imagem do flashcard' })
+  @ApiNoContentResponse({ description: 'Removido com sucesso' })
+  @ApiNotFoundResponse({ description: 'Card sem imagem' })
+  removeImage(@Param('id', ParseIntPipe) id: number) {
+    return this.service.removeImage(id);
   }
 
   @Get(':id')

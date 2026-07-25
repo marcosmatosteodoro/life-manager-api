@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DbDialect } from '../database/db-dialect';
+import { FlashCardImage } from '../flash-card/entities/flash-card-image.entity';
 import { FlashCard } from '../flash-card/entities/flash-card.entity';
 import { FlashCardGroup } from './entities/flash-card-group.entity';
 import { FlashCardGroupService } from './flash-card-group.service';
@@ -59,6 +60,7 @@ const buildGroup = (
 ): FlashCardGroup => ({
   id: 1,
   name: 'Phrasal Verbs',
+  type: 'text',
   createdAt: new Date('2026-06-24T08:30:00.000Z'),
   updatedAt: new Date('2026-06-24T08:30:00.000Z'),
   creatorId: null,
@@ -83,6 +85,10 @@ describe('FlashCardGroupService', () => {
         {
           provide: getRepositoryToken(FlashCard),
           useValue: { createQueryBuilder: jest.fn(() => qb) },
+        },
+        {
+          provide: getRepositoryToken(FlashCardImage),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
         },
         // Dialeto de teste = Postgres (RANDOM()), casa com as asserções abaixo.
         { provide: DbDialect, useValue: { randomOrder: () => 'RANDOM()' } },
@@ -355,7 +361,9 @@ describe('FlashCardGroupService', () => {
       repository.manager.transaction.mockImplementation(
         (cb: (m: unknown) => unknown) => cb(manager),
       );
-      repository.findOne!.mockResolvedValue(buildGroup({ flashCards: [target] }));
+      repository.findOne!.mockResolvedValue(
+        buildGroup({ flashCards: [target] }),
+      );
 
       await service.absorb(1, 2);
 

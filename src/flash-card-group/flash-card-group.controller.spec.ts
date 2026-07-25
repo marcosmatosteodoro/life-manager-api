@@ -8,6 +8,7 @@ const buildGroup = (
 ): FlashCardGroup => ({
   id: 1,
   name: 'Phrasal Verbs',
+  type: 'text',
   createdAt: new Date('2026-06-24T08:30:00.000Z'),
   updatedAt: new Date('2026-06-24T08:30:00.000Z'),
   creatorId: null,

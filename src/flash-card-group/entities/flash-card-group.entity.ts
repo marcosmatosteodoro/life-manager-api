@@ -8,6 +8,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { FlashCard } from '../../flash-card/entities/flash-card.entity';
+import {
+  FLASH_CARD_GROUP_TYPES,
+  type FlashCardGroupType,
+} from '../flash-card-group.constants';
 
 @Entity('flash_card_group')
 export class FlashCardGroup {
@@ -20,6 +24,11 @@ export class FlashCardGroup {
   @ApiProperty({ example: 'Phrasal Verbs' })
   @Column({ type: 'varchar', length: 255, nullable: false })
   name: string;
+
+  // Tipo do grupo: 'text' (padrão) ou 'image'. Decide os modos de estudo.
+  @ApiProperty({ enum: FLASH_CARD_GROUP_TYPES, example: 'text' })
+  @Column({ type: 'varchar', length: 16, default: 'text' })
+  type: FlashCardGroupType;
 
   // createdAt automático
   @ApiProperty()

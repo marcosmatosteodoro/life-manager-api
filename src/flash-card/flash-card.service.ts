@@ -1,12 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { PhotoResponseDto } from '../common/dto/photo-response.dto';
+import { SetPhotoDto } from '../common/dto/set-photo.dto';
+import {
+  delProfilePhoto,
+  putProfilePhoto,
+  readProfilePhotoBase64,
+} from '../common/photo-blob.storage';
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
 import { BlockReviewItemDto } from './dto/block-review-flash-card.dto';
 import { CreateFlashCardDto } from './dto/create-flash-card.dto';
 import { FlashCardListResponseDto } from './dto/flash-card-list-response.dto';
 import { ReviewFlashCardItemDto } from './dto/review-flash-card.dto';
 import { UpdateFlashCardDto } from './dto/update-flash-card.dto';
+import { FlashCardImage } from './entities/flash-card-image.entity';
 import { FlashCard } from './entities/flash-card.entity';
 import { attachTotalReviews } from './flash-card.util';
 import { TranslationService } from './translation.service';
@@ -19,6 +27,8 @@ export class FlashCardService {
     private readonly flashCardRepository: Repository<FlashCard>,
     @InjectRepository(FlashCardGroup)
     private readonly groupRepository: Repository<FlashCardGroup>,
+    @InjectRepository(FlashCardImage)
+    private readonly imageRepository: Repository<FlashCardImage>,
     private readonly translationService: TranslationService,
   ) {}
 
@@ -137,6 +147,68 @@ export class FlashCardService {
     }
     const saved = await this.flashCardRepository.save(cards);
     return saved.map(attachTotalReviews);
+  }
+
+  // ----- Imagem do card (Vercel Blob privado; Postgres guarda a referência) -----
+
+  /** Imagem do card em base64 (lida do Blob sob demanda). */
+  async getImage(id: number): Promise<PhotoResponseDto> {
+    const image = await this.imageRepository.findOne({
+      where: { flashCardId: id },
+    });
+    if (!image) {
+      throw new NotFoundException(tr('flashcards.imageNotFound', { id }));
+    }
+    return {
+      data: await readProfilePhotoBase64(image.pathname),
+      mimeType: image.mimeType,
+    };
+  }
+
+  /** Define/substitui a imagem do card (apaga o blob anterior, se houver). */
+  async setImage(id: number, dto: SetPhotoDto): Promise<PhotoResponseDto> {
+    const card = await this.flashCardRepository.findOne({ where: { id } });
+    if (!card) {
+      throw new NotFoundException(tr('flashcards.cardNotFound', { id }));
+    }
+    const existing = await this.imageRepository.findOne({
+      where: { flashCardId: id },
+    });
+    const stored = await putProfilePhoto(
+      'flashcards',
+      id,
+      dto.data,
+      dto.mimeType,
+    );
+    if (existing) {
+      await delProfilePhoto(existing.url);
+      await this.imageRepository.update(existing.id, {
+        pathname: stored.pathname,
+        url: stored.url,
+        mimeType: dto.mimeType,
+      });
+    } else {
+      await this.imageRepository.save(
+        this.imageRepository.create({
+          flashCardId: id,
+          pathname: stored.pathname,
+          url: stored.url,
+          mimeType: dto.mimeType,
+        }),
+      );
+    }
+    return { data: dto.data, mimeType: dto.mimeType };
+  }
+
+  async removeImage(id: number): Promise<void> {
+    const image = await this.imageRepository.findOne({
+      where: { flashCardId: id },
+    });
+    if (!image) {
+      throw new NotFoundException(tr('flashcards.imageNotFound', { id }));
+    }
+    await delProfilePhoto(image.url);
+    await this.imageRepository.delete(image.id);
   }
 
   /** Aplica a regra de review no card (mutação em memória). */

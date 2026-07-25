@@ -3,11 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FlashCardGroup } from '../flash-card-group/entities/flash-card-group.entity';
 import { FlashCardController } from './flash-card.controller';
 import { FlashCardService } from './flash-card.service';
+import { FlashCardImage } from './entities/flash-card-image.entity';
 import { FlashCard } from './entities/flash-card.entity';
 import { TranslationService } from './translation.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FlashCard, FlashCardGroup])],
+  imports: [
+    TypeOrmModule.forFeature([FlashCard, FlashCardGroup, FlashCardImage]),
+  ],
   providers: [FlashCardService, TranslationService],
   controllers: [FlashCardController],
 })
