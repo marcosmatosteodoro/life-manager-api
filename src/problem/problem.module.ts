@@ -7,9 +7,7 @@ import { ProblemAudio } from './entities/problem-audio.entity';
 import { Problem } from './entities/problem.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Problem, ProblemCategory, ProblemAudio]),
-  ],
+  imports: [TypeOrmModule.forFeature([Problem, ProblemCategory, ProblemAudio])],
   providers: [ProblemService],
   controllers: [ProblemController],
 })

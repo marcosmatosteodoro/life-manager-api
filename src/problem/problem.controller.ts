@@ -105,7 +105,10 @@ export class ProblemController {
   @ApiOperation({ summary: 'Busca a nota de voz do problema (base64)' })
   @ApiOkResponse({ type: ProblemAudioResponseDto })
   @ApiNotFoundResponse({ description: 'Sem áudio para este problema' })
-  getAudio(@Param('id', ParseIntPipe) id: number, @CurrentUser() userId: number) {
+  getAudio(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() userId: number,
+  ) {
     return this.service.getAudio(id, userId);
   }
 
