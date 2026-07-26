@@ -24,9 +24,10 @@ export class Apply {
   @Column({ type: 'varchar', length: 255, nullable: false })
   name: string;
 
-  // link varchar, null true
+  // link text, null true — URL da vaga pode ser longa (ex.: busca do LinkedIn);
+  // sem limite de 255. Por isso é `text`, não `varchar(255)`.
   @ApiProperty({ example: 'https://acme.com/vagas/123', nullable: true })
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'text', nullable: true })
   link: string | null;
 
   // date date, not null

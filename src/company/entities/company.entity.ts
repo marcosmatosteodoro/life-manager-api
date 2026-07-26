@@ -24,9 +24,10 @@ export class Company {
   @Column({ type: 'varchar', length: 255, nullable: false })
   name: string;
 
-  // website varchar, not null
+  // website text, not null — URL pode ser longa (ex.: busca do LinkedIn); sem
+  // limite de 255. Por isso é `text`, não `varchar(255)`.
   @ApiProperty({ example: 'https://acme.com' })
-  @Column({ type: 'varchar', length: 255, nullable: false })
+  @Column({ type: 'text', nullable: false })
   website: string;
 
   // countryId — FK para country (not null)
