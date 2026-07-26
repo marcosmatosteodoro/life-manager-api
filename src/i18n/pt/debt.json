@@ -1,0 +1,7 @@
+{
+  "notFound": "Dívida #{id} não encontrada",
+  "paymentNotFound": "Quitação #{id} não encontrada",
+  "alreadySettled": "Dívida #{id} já está quitada",
+  "invalidValue": "Valor da quitação inválido",
+  "valueExceedsRemaining": "Valor maior que o saldo em aberto ({remaining})"
+}

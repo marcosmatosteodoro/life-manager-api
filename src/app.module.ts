@@ -38,6 +38,7 @@ import { DogDashboardModule } from './dog-dashboard/dog-dashboard.module';
 import { ExpenseCategoryModule } from './expense-category/expense-category.module';
 import { ExpenseModule } from './expense/expense.module';
 import { FixedExpenseModule } from './fixed-expense/fixed-expense.module';
+import { DebtModule } from './debt/debt.module';
 import { HomeModule } from './home/home.module';
 
 @Module({
@@ -102,6 +103,7 @@ import { HomeModule } from './home/home.module';
     ExpenseCategoryModule,
     ExpenseModule,
     FixedExpenseModule,
+    DebtModule,
     HomeModule,
   ],
   controllers: [AppController],

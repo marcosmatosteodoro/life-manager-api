@@ -1,0 +1,7 @@
+{
+  "notFound": "Debt #{id} not found",
+  "paymentNotFound": "Payment #{id} not found",
+  "alreadySettled": "Debt #{id} is already settled",
+  "invalidValue": "Invalid payment amount",
+  "valueExceedsRemaining": "Amount is greater than the outstanding balance ({remaining})"
+}

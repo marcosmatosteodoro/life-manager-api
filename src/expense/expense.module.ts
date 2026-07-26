@@ -20,5 +20,6 @@ import { Expense } from './entities/expense.entity';
   ],
   providers: [ExpenseService],
   controllers: [ExpenseController],
+  exports: [ExpenseService],
 })
 export class ExpenseModule {}
