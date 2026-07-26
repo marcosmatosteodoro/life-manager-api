@@ -16,18 +16,27 @@ const DTO = {
 
 describe('DogWalkService', () => {
   let service: DogWalkService;
-  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock };
-  let dogRepo: { findBy: jest.Mock };
-  let locationRepo: { findOne: jest.Mock };
+  let repo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    findAndCount: jest.Mock;
+  };
+  let dogRepo: { findBy: jest.Mock; find: jest.Mock };
+  let locationRepo: { findOne: jest.Mock; find: jest.Mock };
 
   beforeEach(async () => {
     repo = {
       create: jest.fn((d) => d),
       save: jest.fn((e) => Promise.resolve({ id: 10, ...e })),
       findOne: jest.fn(),
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
     };
-    dogRepo = { findBy: jest.fn() };
-    locationRepo = { findOne: jest.fn() };
+    dogRepo = { findBy: jest.fn(), find: jest.fn().mockResolvedValue([]) };
+    locationRepo = {
+      findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -44,6 +53,20 @@ describe('DogWalkService', () => {
   });
 
   afterEach(() => jest.clearAllMocks());
+
+  it('page agrega passeios + cães + locais numa resposta', async () => {
+    repo.findAndCount.mockResolvedValue([[{ id: 10 }], 1]);
+    dogRepo.find.mockResolvedValue([{ id: 1, name: 'Rex' }]);
+    locationRepo.find.mockResolvedValue([{ id: 5, title: 'Parque' }]);
+
+    const result = await service.page();
+
+    expect(result.walks).toEqual([{ id: 10 }]);
+    expect(result.dogs).toEqual([{ id: 1, name: 'Rex' }]);
+    expect(result.locations).toEqual([{ id: 5, title: 'Parque' }]);
+    expect(dogRepo.find).toHaveBeenCalledWith({ order: { name: 'ASC' } });
+    expect(locationRepo.find).toHaveBeenCalledWith({ order: { title: 'ASC' } });
+  });
 
   it('cria o passeio SEM dono (recurso compartilhado) e cães resolvidos', async () => {
     locationRepo.findOne.mockResolvedValue({ id: 5 });

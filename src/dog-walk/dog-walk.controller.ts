@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateDogWalkDto } from './dto/create-dog-walk.dto';
 import { DogWalkListResponseDto } from './dto/dog-walk-list-response.dto';
+import { DogWalkPageResponseDto } from './dto/dog-walk-page-response.dto';
 import { UpdateDogWalkDto } from './dto/update-dog-walk.dto';
 import { DogWalk } from './entities/dog-walk.entity';
 import { DogWalkService } from './dog-walk.service';
@@ -41,6 +42,16 @@ export class DogWalkController {
   @ApiOkResponse({ type: DogWalkListResponseDto })
   findAll() {
     return this.service.findAll();
+  }
+
+  // Declarado ANTES de :id para não colidir com o param.
+  @Get('page')
+  @ApiOperation({
+    summary: 'Dados agregados da página (passeios + cães + locais)',
+  })
+  @ApiOkResponse({ type: DogWalkPageResponseDto })
+  page() {
+    return this.service.page();
   }
 
   @Get(':id')

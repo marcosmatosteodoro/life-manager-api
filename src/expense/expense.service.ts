@@ -12,6 +12,7 @@ import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpenseAnalysisResponseDto } from './dto/expense-analysis-response.dto';
 import { ExpenseAudioResponseDto } from './dto/expense-audio-response.dto';
 import { ExpenseListResponseDto } from './dto/expense-list-response.dto';
+import { ExpensePageResponseDto } from './dto/expense-page-response.dto';
 import { ExpensePhotoResponseDto } from './dto/expense-photo-response.dto';
 import { ExpenseSummaryResponseDto } from './dto/expense-summary-response.dto';
 import { SetExpenseAudioDto } from './dto/set-expense-audio.dto';
@@ -139,6 +140,19 @@ export class ExpenseService {
     await this.repository.delete(id);
   }
 
+  /**
+   * Dados agregados da página de Gastos (uma requisição): lista + categorias +
+   * resumo do mês. Evita 3 GETs ao abrir a tela.
+   */
+  async page(): Promise<ExpensePageResponseDto> {
+    const [list, categories, summary] = await Promise.all([
+      this.findAll(),
+      this.categoryRepository.find({ order: { name: 'ASC' } }),
+      this.summary(),
+    ]);
+    return { expenses: list.rows, categories, summary };
+  }
+
   /** Resumo do mês corrente: total, quantidade e total por categoria. */
   async summary(): Promise<ExpenseSummaryResponseDto> {
     const now = new Date();
@@ -230,7 +244,11 @@ export class ExpenseService {
         total: c.total,
         qtd: c.count,
       })),
-      porTipo: byType.map((tt) => ({ tipo: tt.key, total: tt.total, qtd: tt.count })),
+      porTipo: byType.map((tt) => ({
+        tipo: tt.key,
+        total: tt.total,
+        qtd: tt.count,
+      })),
       maioresGastos: topExpenses,
     };
 
@@ -412,7 +430,9 @@ export class ExpenseService {
       .where('p.expense_id IN (:...ids)', { ids: rows.map((r) => r.id) })
       .groupBy('p.expense_id')
       .getRawMany<{ expenseId: number; count: string }>();
-    const byId = new Map(counts.map((c) => [Number(c.expenseId), Number(c.count)]));
+    const byId = new Map(
+      counts.map((c) => [Number(c.expenseId), Number(c.count)]),
+    );
     for (const row of rows) row.photoCount = byId.get(row.id) ?? 0;
   }
 
@@ -456,7 +476,7 @@ export class ExpenseService {
    */
   private addMonths(date: string, months: number): string {
     const [y, m, d] = date.split('-').map(Number);
-    const total = (m - 1) + months;
+    const total = m - 1 + months;
     const year = y + Math.floor(total / 12);
     const month = (total % 12) + 1;
     const lastDay = new Date(year, month, 0).getDate();

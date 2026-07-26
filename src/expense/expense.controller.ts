@@ -26,6 +26,7 @@ import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpenseAnalysisResponseDto } from './dto/expense-analysis-response.dto';
 import { ExpenseAudioResponseDto } from './dto/expense-audio-response.dto';
 import { ExpenseListResponseDto } from './dto/expense-list-response.dto';
+import { ExpensePageResponseDto } from './dto/expense-page-response.dto';
 import { ExpensePhotoResponseDto } from './dto/expense-photo-response.dto';
 import { ExpenseSummaryResponseDto } from './dto/expense-summary-response.dto';
 import { SetExpenseAudioDto } from './dto/set-expense-audio.dto';
@@ -51,6 +52,16 @@ export class ExpenseController {
   @ApiOkResponse({ type: ExpenseListResponseDto })
   findAll() {
     return this.service.findAll();
+  }
+
+  // Declarado ANTES de :id para não colidir com o param.
+  @Get('page')
+  @ApiOperation({
+    summary: 'Dados agregados da página (lista + categorias + resumo)',
+  })
+  @ApiOkResponse({ type: ExpensePageResponseDto })
+  page() {
+    return this.service.page();
   }
 
   // Declarado ANTES de :id para não colidir com o param.

@@ -6,7 +6,9 @@ import { AiService } from '../ai/ai.service';
 
 // Mock do SDK do Vercel Blob (não sobe nada de verdade nos testes).
 jest.mock('@vercel/blob', () => ({
-  put: jest.fn().mockResolvedValue({ pathname: 'expenses/1/p.jpg', url: 'https://blob/x' }),
+  put: jest
+    .fn()
+    .mockResolvedValue({ pathname: 'expenses/1/p.jpg', url: 'https://blob/x' }),
   get: jest.fn(),
   del: jest.fn().mockResolvedValue(undefined),
 }));
@@ -54,6 +56,7 @@ describe('ExpenseService', () => {
   };
   let categoryRepo: {
     findOne: jest.Mock;
+    find: jest.Mock;
     create: jest.Mock;
     save: jest.Mock;
     createQueryBuilder: jest.Mock;
@@ -86,6 +89,7 @@ describe('ExpenseService', () => {
     };
     categoryRepo = {
       findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       create: jest.fn((d) => d),
       save: jest.fn((e) => Promise.resolve({ id: 7, ...e })),
       createQueryBuilder: jest.fn(() => makeCategoryQb(null)),
@@ -113,7 +117,10 @@ describe('ExpenseService', () => {
         { provide: getRepositoryToken(Expense), useValue: repo },
         { provide: getRepositoryToken(ExpenseAudio), useValue: audioRepo },
         { provide: getRepositoryToken(ExpensePhoto), useValue: photoRepo },
-        { provide: getRepositoryToken(ExpenseCategory), useValue: categoryRepo },
+        {
+          provide: getRepositoryToken(ExpenseCategory),
+          useValue: categoryRepo,
+        },
         { provide: AiService, useValue: ai },
       ],
     }).compile();
@@ -229,6 +236,22 @@ describe('ExpenseService', () => {
     });
   });
 
+  describe('page', () => {
+    it('agrega lista + categorias + resumo numa resposta', async () => {
+      repo.find.mockResolvedValue([{ id: 1 }]);
+      categoryRepo.find.mockResolvedValue([{ id: 7, name: 'Mercado' }]);
+      const result = await service.page();
+      expect(categoryRepo.find).toHaveBeenCalledWith({
+        order: { name: 'ASC' },
+      });
+      expect(result.expenses).toEqual([
+        { id: 1, hasAudio: false, photoCount: 0 },
+      ]);
+      expect(result.categories).toEqual([{ id: 7, name: 'Mercado' }]);
+      expect(result.summary).toHaveProperty('monthTotal');
+    });
+  });
+
   describe('summary', () => {
     it('agrega total do mês e por categoria', async () => {
       const qb = makeExpenseQb();
@@ -281,11 +304,28 @@ describe('ExpenseService', () => {
   describe('analyze', () => {
     it('agrega o período, chama a IA e devolve totais + análise', async () => {
       repo.find.mockResolvedValue([
-        { value: 100, type: 'debito', date: '2026-07-02', title: 'A', category: { name: 'Mercado' }, installments: null },
-        { value: 300, type: 'credito', date: '2026-07-05', title: 'B', category: null, installments: 3 },
+        {
+          value: 100,
+          type: 'debito',
+          date: '2026-07-02',
+          title: 'A',
+          category: { name: 'Mercado' },
+          installments: null,
+        },
+        {
+          value: 300,
+          type: 'credito',
+          date: '2026-07-05',
+          title: 'B',
+          category: null,
+          installments: 3,
+        },
       ]);
 
-      const result = await service.analyze({ from: '2026-07-01', to: '2026-07-31' });
+      const result = await service.analyze({
+        from: '2026-07-01',
+        to: '2026-07-31',
+      });
 
       expect(ai.complete).toHaveBeenCalled();
       expect(result.total).toBe(400);
@@ -310,7 +350,10 @@ describe('ExpenseService', () => {
       expect(put).toHaveBeenCalledWith(
         expect.stringContaining('expenses/1/photo'),
         expect.any(Buffer),
-        expect.objectContaining({ access: 'private', contentType: 'image/jpeg' }),
+        expect.objectContaining({
+          access: 'private',
+          contentType: 'image/jpeg',
+        }),
       );
       expect(photoRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -325,7 +368,9 @@ describe('ExpenseService', () => {
 
     it('removePhoto lança NotFound quando a foto não existe', async () => {
       photoRepo.findOne.mockResolvedValue(null);
-      await expect(service.removePhoto(1, 5)).rejects.toThrow(NotFoundException);
+      await expect(service.removePhoto(1, 5)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('removePhoto apaga o blob e a linha', async () => {

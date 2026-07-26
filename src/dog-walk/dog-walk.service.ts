@@ -6,6 +6,7 @@ import { DogWalkLocation } from '../dog-walk-location/entities/dog-walk-location
 import { tr } from '../i18n/translate';
 import { CreateDogWalkDto } from './dto/create-dog-walk.dto';
 import { DogWalkListResponseDto } from './dto/dog-walk-list-response.dto';
+import { DogWalkPageResponseDto } from './dto/dog-walk-page-response.dto';
 import { UpdateDogWalkDto } from './dto/update-dog-walk.dto';
 import { DogWalk } from './entities/dog-walk.entity';
 
@@ -43,6 +44,20 @@ export class DogWalkService {
       order: { startedAt: 'DESC' },
     });
     return { count, rows };
+  }
+
+  /**
+   * Dados agregados da página de Passeios (uma requisição): passeios + cães +
+   * locais (para os seletores). Evita 3 GETs ao abrir a tela. Ordena cães/locais
+   * igual aos seus `findAll` (nome/título ASC).
+   */
+  async page(): Promise<DogWalkPageResponseDto> {
+    const [walks, dogs, locations] = await Promise.all([
+      this.findAll(),
+      this.dogRepository.find({ order: { name: 'ASC' } }),
+      this.locationRepository.find({ order: { title: 'ASC' } }),
+    ]);
+    return { walks: walks.rows, dogs, locations };
   }
 
   async findOne(id: number): Promise<DogWalk> {
