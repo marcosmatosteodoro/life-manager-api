@@ -155,6 +155,80 @@ describe('ExpenseService', () => {
     });
   });
 
+  describe('parcelamento', () => {
+    it('crédito com 2+ parcelas gera um lançamento por mês', async () => {
+      repo.findOne.mockResolvedValue({ id: 1 });
+      await service.create({
+        title: 'Notebook',
+        value: 100,
+        type: 'credito',
+        date: '2026-07-25',
+        installments: 3,
+      });
+
+      // Uma única chamada de save com o array das 3 parcelas.
+      expect(repo.save).toHaveBeenCalledTimes(1);
+      const parcels = repo.save.mock.calls[0][0] as Array<{
+        value: number;
+        date: string;
+        parcelNumber: number;
+        installments: number;
+        parcelGroupId: string;
+      }>;
+      expect(parcels).toHaveLength(3);
+      expect(parcels.map((p) => p.date)).toEqual([
+        '2026-07-25',
+        '2026-08-25',
+        '2026-09-25',
+      ]);
+      expect(parcels.map((p) => p.parcelNumber)).toEqual([1, 2, 3]);
+      // Valor = valor da parcela em todas; mesmo grupo.
+      expect(parcels.every((p) => p.value === 100)).toBe(true);
+      expect(new Set(parcels.map((p) => p.parcelGroupId)).size).toBe(1);
+    });
+
+    it('ajusta o dia em meses mais curtos (31/jan → 28/fev)', async () => {
+      repo.findOne.mockResolvedValue({ id: 1 });
+      await service.create({
+        title: 'Curso',
+        value: 50,
+        type: 'credito',
+        date: '2026-01-31',
+        installments: 2,
+      });
+      const parcels = repo.save.mock.calls[0][0] as Array<{ date: string }>;
+      expect(parcels.map((p) => p.date)).toEqual(['2026-01-31', '2026-02-28']);
+    });
+
+    it('crédito à vista (1x) não parcela: um único lançamento sem grupo', async () => {
+      repo.findOne.mockResolvedValue({ id: 1 });
+      await service.create({
+        title: 'Fone',
+        value: 200,
+        type: 'credito',
+        date: '2026-07-25',
+        installments: 1,
+      });
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ installments: 1 }),
+      );
+      // Não passou array pro save (parcela única = objeto).
+      expect(Array.isArray(repo.save.mock.calls[0][0])).toBe(false);
+    });
+
+    it('remove de uma parcela apaga a compra inteira (grupo)', async () => {
+      repo.findOne.mockResolvedValue({ id: 5, parcelGroupId: 'grp-1' });
+      await service.remove(5);
+      expect(repo.delete).toHaveBeenCalledWith({ parcelGroupId: 'grp-1' });
+    });
+
+    it('remove de gasto avulso apaga só ele', async () => {
+      repo.findOne.mockResolvedValue({ id: 9, parcelGroupId: null });
+      await service.remove(9);
+      expect(repo.delete).toHaveBeenCalledWith(9);
+    });
+  });
+
   describe('summary', () => {
     it('agrega total do mês e por categoria', async () => {
       const qb = makeExpenseQb();

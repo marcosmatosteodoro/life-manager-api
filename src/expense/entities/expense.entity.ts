@@ -46,10 +46,20 @@ export class Expense {
   })
   type: ExpenseType;
 
-  // Parcelas — só faz sentido no crédito; NULL nos demais.
+  // Parcelas — total de parcelas da compra; só faz sentido no crédito; NULL nos demais.
   @ApiProperty({ example: 3, nullable: true })
   @Column({ type: 'int', nullable: true })
   installments: number | null;
+
+  // Parcelamento: agrupa as N parcelas de uma mesma compra (uuid). NULL = à vista.
+  @ApiProperty({ example: 'a1b2c3d4-...', nullable: true })
+  @Column({ name: 'parcel_group_id', type: 'varchar', length: 36, nullable: true })
+  parcelGroupId: string | null;
+
+  // Número desta parcela (1..installments). NULL quando não é parcelado.
+  @ApiProperty({ example: 2, nullable: true })
+  @Column({ name: 'parcel_number', type: 'int', nullable: true })
+  parcelNumber: number | null;
 
   @ApiProperty({ example: '2026-07-25' })
   @Column({ type: 'date', nullable: false })

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { del, get, put } from '@vercel/blob';
@@ -39,12 +40,36 @@ export class ExpenseService {
 
   async create(dto: CreateExpenseDto): Promise<Expense> {
     const categoryId = await this.resolveCategory(dto);
+    const installments =
+      dto.type === 'credito' ? (dto.installments ?? null) : null;
+
+    // Crédito com 2+ parcelas: gera um lançamento por mês (valor = valor da
+    // parcela), recorrendo a partir da data até acabar. Cada parcela cai no seu
+    // mês, então resumo/análise (que somam por data) já funcionam sozinhos.
+    if (installments && installments >= 2) {
+      const groupId = randomUUID();
+      const parcels = Array.from({ length: installments }, (_, i) =>
+        this.repository.create({
+          title: dto.title,
+          value: dto.value,
+          type: dto.type,
+          installments,
+          parcelGroupId: groupId,
+          parcelNumber: i + 1,
+          date: this.addMonths(dto.date, i),
+          categoryId,
+          description: dto.description ?? null,
+        }),
+      );
+      const saved = await this.repository.save(parcels);
+      return this.findOne(saved[0].id);
+    }
+
     const expense = this.repository.create({
       title: dto.title,
       value: dto.value,
       type: dto.type,
-      // Parcelas só no crédito.
-      installments: dto.type === 'credito' ? (dto.installments ?? null) : null,
+      installments,
       date: dto.date,
       categoryId,
       description: dto.description ?? null,
@@ -98,11 +123,20 @@ export class ExpenseService {
     return this.findOne(id);
   }
 
+  /**
+   * Remove um gasto. Se for uma parcela, remove a compra inteira (todas as
+   * parcelas do grupo) — parcelamento é tratado como uma coisa só.
+   */
   async remove(id: number): Promise<void> {
-    const result = await this.repository.delete(id);
-    if (!result.affected) {
+    const expense = await this.repository.findOne({ where: { id } });
+    if (!expense) {
       throw new NotFoundException(tr('expense.notFound', { id }));
     }
+    if (expense.parcelGroupId) {
+      await this.repository.delete({ parcelGroupId: expense.parcelGroupId });
+      return;
+    }
+    await this.repository.delete(id);
   }
 
   /** Resumo do mês corrente: total, quantidade e total por categoria. */
@@ -413,5 +447,21 @@ export class ExpenseService {
     const a = new Date(`${from}T00:00:00`);
     const b = new Date(`${to}T00:00:00`);
     return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+  }
+
+  /**
+   * Soma `months` meses a uma data YYYY-MM-DD (só string, sem fuso). Ajusta o
+   * dia para o último do mês quando o mês alvo é mais curto (ex.: 31/jan +1 mês
+   * = 28/fev).
+   */
+  private addMonths(date: string, months: number): string {
+    const [y, m, d] = date.split('-').map(Number);
+    const total = (m - 1) + months;
+    const year = y + Math.floor(total / 12);
+    const month = (total % 12) + 1;
+    const lastDay = new Date(year, month, 0).getDate();
+    const day = Math.min(d, lastDay);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${year}-${pad(month)}-${pad(day)}`;
   }
 }
